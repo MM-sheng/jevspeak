@@ -3,6 +3,7 @@ import { runTurn } from "@/lib/conversation/pipeline";
 import { emptyState, isConversationState } from "@/lib/conversation/state";
 import { JevError, overrideFromHeaders } from "@/lib/jev";
 import type { ChatError, ChatResponse } from "@/types/conversation";
+import { clientIp, rateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,18 @@ function err(code: ChatError["code"], message: string, status: number, detail?: 
   return NextResponse.json<ChatError>({ ok: false, code, message, detail }, { status });
 }
 
+const PER_IP_PER_MINUTE = Number(process.env.RATE_LIMIT_PER_MINUTE ?? 20);
+
 export async function POST(req: Request) {
+  // Only meter calls that would spend the server's own Jev key.
+  if (!req.headers.get("x-jev-api-key")) {
+    const rl = rateLimit(clientIp(req), PER_IP_PER_MINUTE);
+    if (!rl.ok)
+      return NextResponse.json<ChatError>(
+        { ok: false, code: "rate_limited", message: `Too many messages. Try again in ${rl.retryAfterSec}s, or add your own Jev key in Settings.` },
+        { status: 429, headers: { "retry-after": String(rl.retryAfterSec) } },
+      );
+  }
   let body: unknown;
   try {
     body = await req.json();

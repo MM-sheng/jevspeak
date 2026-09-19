@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "set-key": "node scripts/set-key.mjs",
+    "set-key:vercel": "node scripts/set-key.mjs --vercel",
+    "deploy": "env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy vercel deploy --prod --yes"
   },
   "dependencies": {
     "next": "16.3.5",

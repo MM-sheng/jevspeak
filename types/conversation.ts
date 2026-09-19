@@ -55,6 +55,7 @@ export interface ChatError {
     | "jev_malformed"
     | "jev_missing_key"
     | "jev_rate_limited"
+    | "rate_limited"
     | "jev_network"
     | "compile_failed"
     | "internal";
