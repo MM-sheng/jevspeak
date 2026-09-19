@@ -292,3 +292,16 @@ describe("questions about the user", () => {
     wellFormed(text);
   });
 });
+
+describe("base_rate_only always renders", () => {
+  it("even at minimal length", () => {
+    const { text } = compileResponse({ intent: "question", topic: "personal", speechAct: "answer", tone: "neutral", length: "minimal", confidence: 0.93, stance: "mostly_no", mainClaim: "base_rate_only" });
+    expect(text).toMatch(/^(Very unlikely|Almost certainly not)\. /);
+    expect(text).toMatch(/base rate|about you|who you are/);
+  });
+  it("replaces the generic decline line", () => {
+    const { text } = compileResponse({ intent: "question", topic: "personal", speechAct: "decline", tone: "cautious", length: "short", confidence: 0.14, mainClaim: "base_rate_only", qualification: "limited_knowledge" });
+    expect(text).not.toMatch(/solid enough read|not confident enough/);
+    expect(text).toMatch(/base rate|about you|who you are/);
+  });
+});

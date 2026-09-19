@@ -163,6 +163,15 @@ export function plan(input: SemanticResponse, pack: LocalePack = getPack("en")):
       break;
 
     case "answer":
+      if (ir.mainClaim === "base_rate_only") {
+        // "Am I Elon Musk?" → the short answer is fine, but the disclaimer is the point; always keep it.
+        if (tonedOpener) slots.push("opener");
+        if (ir.stance && ir.stance !== "uncertain") slots.push("short_answer");
+        slots.push("claim");
+        hedgeCarried = true;
+        if (hasFollow && ir.length === "medium") slots.push("follow_up");
+        break;
+      }
       if (hasClaim && SCOPE_CLAIMS.has(ir.mainClaim!)) {
         // "What's the capital of X?" → no yes/no; say plainly what this model can't do.
         slots.push("claim");
@@ -212,7 +221,7 @@ export function plan(input: SemanticResponse, pack: LocalePack = getPack("en")):
       break;
 
     case "decline":
-      if (hasClaim && SCOPE_CLAIMS.has(ir.mainClaim!)) {
+      if (hasClaim && (SCOPE_CLAIMS.has(ir.mainClaim!) || ir.mainClaim === "base_rate_only")) {
         slots.push("claim");
         hedgeCarried = true;
         if (hasFollow) slots.push("follow_up");
