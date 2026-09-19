@@ -29,6 +29,7 @@ export function ChatClient() {
   const [selected, setSelected] = useState<string | null>(null);
   const [debug, setDebug] = useState(false);
   const [brainOpen, setBrainOpen] = useState(true);
+  const [mobileBrain, setMobileBrain] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<JevSettingsValue>(DEFAULT_SETTINGS);
   const [autoSpeak, setAutoSpeak] = useState(false);
@@ -156,7 +157,12 @@ export function ChatClient() {
             </button>
             <Toggle on={autoSpeak} onClick={toggleAutoSpeak} label={t.autoSpeak} disabled={!speech.supported} />
             <Toggle on={debug} onClick={() => setDebug((v) => !v)} label={t.debug} />
-            <Toggle on={brainOpen} onClick={() => setBrainOpen((v) => !v)} label={t.brain} />
+            <span className="hidden md:inline-flex">
+              <Toggle on={brainOpen} onClick={() => setBrainOpen((v) => !v)} label={t.brain} />
+            </span>
+            <span className="md:hidden inline-flex">
+              <Toggle on={mobileBrain} onClick={() => setMobileBrain((v) => !v)} label={t.brain} />
+            </span>
             <button onClick={() => setSettingsOpen(true)} className="btn btn-sm" title="Jev API settings">
               {t.settings}
             </button>
@@ -205,7 +211,18 @@ export function ChatClient() {
                       text={r.jev.text}
                       meta={`${r.jev.semantic.speechAct} · ${r.jev.semantic.tone} · conf ${r.jev.semantic.confidence.toFixed(2)}`}
                       action={
-                        speech.supported && (
+                        <span className="flex gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelected(r.jev.id);
+                            setMobileBrain(true);
+                          }}
+                          className="btn btn-sm md:hidden"
+                        >
+                          {t.brain}
+                        </button>
+                        {speech.supported && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -216,7 +233,8 @@ export function ChatClient() {
                           >
                             {speech.speakingId === r.jev.id ? t.stop : t.speak}
                           </button>
-                        )
+                        )}
+                        </span>
                       }
                     />
                     {debug && selectedRecord?.jev.id === r.jev.id && (
@@ -307,6 +325,14 @@ export function ChatClient() {
           <aside className="w-[340px] shrink-0 hidden md:flex flex-col min-h-0">
             <JevBrain turn={selectedRecord?.jev ?? null} locale={locale} />
           </aside>
+        )}
+        {/* Mobile: Brain as a bottom sheet */}
+        {mobileBrain && (
+          <div className="md:hidden fixed inset-0 z-30 bg-ink/30 flex flex-col justify-end" onClick={() => setMobileBrain(false)}>
+            <div className="h-[78vh] p-3 pb-4 flex flex-col min-h-0" onClick={(e) => e.stopPropagation()}>
+              <JevBrain turn={selectedRecord?.jev ?? null} locale={locale} />
+            </div>
+          </div>
         )}
       </div>
     </div>
