@@ -1,54 +1,212 @@
 @import "tailwindcss";
 
+/* TypeSafe-inspired 1-bit system palette */
 :root {
-  --bg: #0b0c0e;
-  --panel: #111316;
-  --panel-2: #16191d;
-  --border: #22262c;
-  --border-strong: #2f343c;
-  --fg: #e4e6ea;
-  --fg-muted: #8a9099;
-  --fg-dim: #5d636c;
-  --accent: #79b8ff;
-  --accent-dim: #2b4a6b;
-  --amber: #e5b04a;
-  --green: #6fcf97;
-  --red: #ef6b6b;
-  --user: #c9cdd3;
+  --paper: #fefefe;
+  --pink: #f386a1;
+  --pink-deep: #e9668a;
+  --ink: #1e1e1e;
+  --ink-soft: #4a4a4a;
+  --ink-dim: #7a7a7a;
+  --grey: #c4c4c4;
+  --grey-light: #dedede;
+  --grey-faint: #efefef;
+  --white: #ffffff;
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-panel: var(--panel);
-  --color-panel-2: var(--panel-2);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-fg: var(--fg);
-  --color-fg-muted: var(--fg-muted);
-  --color-fg-dim: var(--fg-dim);
-  --color-accent: var(--accent);
-  --color-accent-dim: var(--accent-dim);
-  --color-amber: var(--amber);
-  --color-green: var(--green);
-  --color-red: var(--red);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-paper: var(--paper);
+  --color-pink: var(--pink);
+  --color-pink-deep: var(--pink-deep);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-dim: var(--ink-dim);
+  --color-grey: var(--grey);
+  --color-grey-light: var(--grey-light);
+  --color-grey-faint: var(--grey-faint);
+  --font-sans: var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
 
 html,
 body {
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--accent-dim);
+  background: var(--pink);
+  color: var(--ink);
 }
 
-.bar-anim {
+/* ---- dithered backgrounds ---- */
+.dots {
+  background-color: var(--pink);
+  background-image: radial-gradient(var(--ink) 0.6px, transparent 0.7px);
+  background-size: 4px 4px;
+}
+.dots-light {
+  background-color: var(--paper);
+  background-image: radial-gradient(var(--grey) 0.6px, transparent 0.7px);
+  background-size: 4px 4px;
+}
+.dots-ink {
+  background-image: radial-gradient(var(--ink) 1px, transparent 1.1px);
+  background-size: 3px 3px;
+}
+
+/* ---- system window ---- */
+.win {
+  background: var(--white);
+  border: 1.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.win-title {
+  background: var(--ink);
+  color: var(--white);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  user-select: none;
+}
+.win-title .stripes {
+  flex: 1;
+  height: 7px;
+  background: repeating-linear-gradient(to bottom, var(--white) 0 1px, transparent 1px 2px);
+  opacity: 0.55;
+}
+
+/* ---- corner brackets ---- */
+.brackets {
+  position: relative;
+}
+.brackets::before,
+.brackets::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--ink);
+  border-style: solid;
+  opacity: 0.7;
+}
+.brackets::before {
+  top: 0;
+  left: 0;
+  border-width: 1.5px 0 0 1.5px;
+}
+.brackets::after {
+  top: 0;
+  right: 0;
+  border-width: 1.5px 1.5px 0 0;
+}
+
+/* ---- labels ---- */
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  border-left: 1.5px solid var(--ink);
+  padding-left: 8px;
+}
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* ---- buttons ---- */
+.btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1.5px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  padding: 4px 10px;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: transform 60ms ease, box-shadow 60ms ease;
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--grey-faint);
+}
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.btn-ink {
+  background: var(--ink);
+  color: var(--white);
+}
+.btn-ink:hover {
+  background: #000;
+}
+.btn-on {
+  background: var(--pink);
+}
+.btn-on:hover {
+  background: var(--pink-deep);
+}
+.btn-sm {
+  font-size: 11px;
+  padding: 2px 7px;
+  box-shadow: 1.5px 1.5px 0 var(--ink);
+}
+
+/* ---- inputs ---- */
+.field {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border: 1.5px solid var(--ink);
+  background: var(--white);
+  color: var(--ink);
+  padding: 8px 10px;
+  outline: none;
+  box-shadow: inset 2px 2px 0 var(--grey-light);
+}
+.field:focus {
+  box-shadow: inset 2px 2px 0 var(--pink);
+}
+.field::placeholder {
+  color: var(--ink-dim);
+}
+
+/* ---- slider-style probability bar ---- */
+.track {
+  position: relative;
+  height: 8px;
+  border: 1px solid var(--ink);
+  background: var(--white);
+}
+.track > .fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ink);
   transition: width 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.track > .fill.dim {
+  background-image: radial-gradient(var(--ink) 0.8px, transparent 0.9px);
+  background-color: var(--white);
+  background-size: 3px 3px;
+}
+.track > .knob {
+  position: absolute;
+  top: -3px;
+  width: 6px;
+  height: 12px;
+  background: var(--ink);
+  transform: translateX(-3px);
+  transition: left 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes fade-up {
@@ -62,23 +220,23 @@ body {
   }
 }
 .fade-up {
-  animation: fade-up 160ms ease-out both;
+  animation: fade-up 140ms ease-out both;
 }
 
 @keyframes blink {
   0%,
   100% {
-    opacity: 0.25;
+    opacity: 0.2;
   }
   50% {
     opacity: 1;
   }
 }
 .blink {
-  animation: blink 900ms ease-in-out infinite;
+  animation: blink 800ms steps(2, end) infinite;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-color: var(--ink) transparent;
 }

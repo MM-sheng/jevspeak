@@ -2,21 +2,20 @@ import type { Distribution as Dist } from "@/types/semantic";
 
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 
-/** Horizontal bar chart of one Jev question's distribution. */
+/** Slider-style bars for one Jev question's distribution. */
 export function DistributionBars({ dist, max = 4 }: { dist: Dist; max?: number }) {
   const rows = dist.options.slice(0, max);
   return (
-    <ul className="space-y-[3px]">
+    <ul className="space-y-[5px]">
       {rows.map((o, i) => (
-        <li key={o.value} className="grid grid-cols-[minmax(0,1fr)_88px_36px] items-center gap-2 font-mono text-[11px]">
-          <span className={`truncate ${i === 0 ? "text-fg" : "text-fg-dim"}`}>{o.value}</span>
-          <span className="h-[6px] bg-panel-2 rounded-sm overflow-hidden">
-            <span
-              className={`block h-full rounded-sm bar-anim ${i === 0 ? "bg-accent" : "bg-border-strong"}`}
-              style={{ width: pct(o.probability) }}
-            />
+        <li key={o.value} className="grid grid-cols-[minmax(0,1fr)_84px_36px] items-center gap-2 mono text-[11px]">
+          <span className={`truncate ${i === 0 ? "text-ink bg-ink/0 font-medium" : "text-ink-dim"}`}>
+            {i === 0 ? <span className="bg-ink text-white px-1">{o.value}</span> : o.value}
           </span>
-          <span className={`text-right tabular-nums ${i === 0 ? "text-fg" : "text-fg-dim"}`}>{pct(o.probability)}</span>
+          <span className="track">
+            <span className={`fill ${i === 0 ? "" : "dim"}`} style={{ width: pct(o.probability) }} />
+          </span>
+          <span className={`text-right tabular-nums ${i === 0 ? "text-ink" : "text-ink-dim"}`}>{pct(o.probability)}</span>
         </li>
       ))}
     </ul>
@@ -25,12 +24,12 @@ export function DistributionBars({ dist, max = 4 }: { dist: Dist; max?: number }
 
 export function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_88px_36px] items-center gap-2 font-mono text-[11px]">
-      <span className="text-fg">{label}</span>
-      <span className="h-[6px] bg-panel-2 rounded-sm overflow-hidden">
-        <span className="block h-full rounded-sm bg-amber bar-anim" style={{ width: pct(value) }} />
+    <div className="grid grid-cols-[minmax(0,1fr)_84px_36px] items-center gap-2 mono text-[11px]">
+      <span className="text-ink">{label}</span>
+      <span className="track">
+        <span className="knob" style={{ left: pct(value) }} />
       </span>
-      <span className="text-right tabular-nums text-fg">{value.toFixed(2)}</span>
+      <span className="text-right tabular-nums text-ink">{value.toFixed(2)}</span>
     </div>
   );
 }

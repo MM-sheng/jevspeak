@@ -150,46 +150,39 @@ export function ChatClient() {
         mode={mode}
         tagline={t.tagline}
         right={
-          <div className="flex items-center gap-2 font-mono text-[11px]">
-            <button
-              onClick={toggleLocale}
-              className="px-1.5 py-0.5 rounded border border-accent/60 text-accent hover:bg-panel-2"
-              title={locale === "en" ? "切换到中文渲染" : "Switch to English rendering"}
-            >
+          <div className="flex items-center gap-1.5 mono text-[11px]">
+            <button onClick={toggleLocale} className="btn btn-sm" title={locale === "en" ? "切换到中文渲染" : "Switch to English rendering"}>
               {locale === "en" ? "EN" : "中文"}
             </button>
             <Toggle on={autoSpeak} onClick={toggleAutoSpeak} label={t.autoSpeak} disabled={!speech.supported} />
             <Toggle on={debug} onClick={() => setDebug((v) => !v)} label={t.debug} />
             <Toggle on={brainOpen} onClick={() => setBrainOpen((v) => !v)} label={t.brain} />
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="px-1.5 py-0.5 rounded border border-border text-fg-dim hover:text-fg"
-              title="Jev API settings"
-            >
+            <button onClick={() => setSettingsOpen(true)} className="btn btn-sm" title="Jev API settings">
               {t.settings}
             </button>
-            <button onClick={reset} className="text-fg-dim hover:text-fg px-1" title={t.resetTitle}>
+            <button onClick={reset} className="btn btn-sm" title={t.resetTitle}>
               {t.reset}
             </button>
           </div>
         }
       />
 
-      <div className="flex flex-1 min-h-0">
-        {/* Conversation */}
-        <main className="flex-1 flex flex-col min-w-0">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-8 py-6">
-            <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex flex-1 min-h-0 dots p-3 gap-3">
+        {/* Conversation window */}
+        <main className="flex-1 flex flex-col min-w-0 win">
+          <div className="win-title">
+            <span>{locale === "zh" ? "对话" : "Conversation"}</span>
+            <span className="stripes" />
+            <span>{records.length}</span>
+          </div>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+            <div className="max-w-2xl mx-auto space-y-5">
               {records.length === 0 && !pending && (
                 <div className="pt-10">
-                  <div className="text-fg-muted text-sm">{t.emptyTitle}</div>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="text-[15px] text-ink leading-snug max-w-md">{t.emptyTitle}</div>
+                  <div className="mt-5 flex flex-wrap gap-2">
                     {t.suggestions.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => send(s)}
-                        className="text-xs border border-border rounded px-2.5 py-1.5 text-fg-muted hover:text-fg hover:border-border-strong transition-colors"
-                      >
+                      <button key={s} onClick={() => send(s)} className="btn">
                         {s}
                       </button>
                     ))}
@@ -201,8 +194,8 @@ export function ChatClient() {
                 <div key={r.user.id} className="space-y-4 fade-up">
                   <Message role={t.you} text={r.user.text} />
                   <div
-                    className={`rounded -mx-3 px-3 py-2 cursor-pointer transition-colors ${
-                      selectedRecord?.jev.id === r.jev.id ? "bg-panel" : "hover:bg-panel/60"
+                    className={`border-[1.5px] px-3 py-2.5 cursor-pointer transition-colors ${
+                      selectedRecord?.jev.id === r.jev.id ? "border-ink bg-white shadow-[3px_3px_0_var(--ink)]" : "border-transparent hover:border-ink"
                     }`}
                     onClick={() => setSelected(r.jev.id)}
                   >
@@ -219,11 +212,7 @@ export function ChatClient() {
                               if (speech.speakingId === r.jev.id) speech.stop();
                               else speech.speak(r.jev.id, r.jev.text, getPack(r.jev.trace.locale ?? "en").speechLang);
                             }}
-                            className={`font-mono text-[11px] px-2 py-0.5 rounded border transition-colors ${
-                              speech.speakingId === r.jev.id
-                                ? "border-accent text-accent"
-                                : "border-border text-fg-dim hover:text-fg hover:border-border-strong"
-                            }`}
+                            className={`btn btn-sm ${speech.speakingId === r.jev.id ? "btn-on" : ""}`}
                           >
                             {speech.speakingId === r.jev.id ? t.stop : t.speak}
                           </button>
@@ -242,31 +231,36 @@ export function ChatClient() {
               {pending && (
                 <div className="space-y-4 fade-up">
                   <Message role={t.you} text={pending} />
-                  <div className="font-mono text-xs text-fg-dim">
-                    <span className="text-fg-muted">Jev</span> <span className="blink">{t.deciding}</span>
+                  <div className="mono text-[11px] text-ink">
+                    <span className="bg-ink text-white px-1">Jev</span> <span className="blink">{t.deciding}</span>
                   </div>
                 </div>
               )}
 
               {error && (
-                <div className="border border-red/40 rounded p-3 text-sm fade-up">
-                  <div className="font-mono text-[11px] text-red uppercase tracking-wider mb-1">{error.code}</div>
-                  <div className="text-fg">{error.message}</div>
-                  {error.detail && <pre className="mt-2 text-[11px] text-fg-dim whitespace-pre-wrap">{error.detail}</pre>}
-                  <div className="mt-2 text-[11px] text-fg-dim">
+                <div className="win fade-up">
+                  <div className="win-title">
+                    <span>⚠ {error.code}</span>
+                    <span className="stripes" />
+                  </div>
+                  <div className="p-3 text-sm bg-pink">
+                  <div className="text-ink">{error.message}</div>
+                  {error.detail && <pre className="mt-2 mono text-[11px] text-ink-soft whitespace-pre-wrap">{error.detail}</pre>}
+                  <div className="mt-2 mono text-[11px] text-ink-soft">
                     {t.noFallback}
                     {error.code === "jev_missing_key" && (
                       <>
                         {" "}
-                        <button onClick={() => setSettingsOpen(true)} className="text-accent hover:underline">
+                        <button onClick={() => setSettingsOpen(true)} className="underline">
                           {t.openSettings}
                         </button>
                       </>
                     )}
                   </div>
+                  </div>
                 </div>
               )}
-              {speech.error && <div className="text-xs text-red">{speech.error}</div>}
+              {speech.error && <div className="mono text-[11px] text-ink">{speech.error}</div>}
             </div>
           </div>
 
@@ -275,9 +269,9 @@ export function ChatClient() {
               e.preventDefault();
               send(input);
             }}
-            className="border-t border-border px-4 sm:px-8 py-3"
+            className="border-t-[1.5px] border-ink px-4 sm:px-6 py-3 bg-grey-faint"
           >
-            <div className="max-w-2xl mx-auto flex gap-2 items-end">
+            <div className="max-w-2xl mx-auto flex gap-2 items-stretch">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -290,18 +284,18 @@ export function ChatClient() {
                 }}
                 rows={1}
                 placeholder={t.placeholder}
-                className="flex-1 resize-none bg-panel border border-border rounded px-3 py-2 text-sm text-fg placeholder:text-fg-dim focus:outline-none focus:border-accent/60"
+                className="field flex-1 resize-none !font-sans text-[14px]"
                 autoFocus
               />
               <button
                 type="submit"
                 disabled={!input.trim() || !!pending}
-                className="px-3 py-2 rounded bg-fg text-bg text-sm font-medium disabled:opacity-30 hover:bg-accent transition-colors"
+                className="btn btn-ink"
               >
                 {t.send}
               </button>
             </div>
-            <div className="max-w-2xl mx-auto mt-1.5 font-mono text-[10px] text-fg-dim">
+            <div className="max-w-2xl mx-auto mt-2 mono text-[10px] text-ink-soft">
               {t.memory(state.turnCount, state.currentTopic ?? "—", state.userSentiment ?? "—")}
               {state.unresolvedQuestion ? t.awaiting : ""}
             </div>
@@ -310,7 +304,7 @@ export function ChatClient() {
 
         {/* Jev Brain */}
         {brainOpen && (
-          <aside className="w-[320px] shrink-0 border-l border-border bg-panel/40 hidden md:flex flex-col">
+          <aside className="w-[340px] shrink-0 hidden md:flex flex-col min-h-0">
             <JevBrain turn={selectedRecord?.jev ?? null} locale={locale} />
           </aside>
         )}
@@ -322,14 +316,14 @@ export function ChatClient() {
 function Message({ role, text, meta, action, isJev }: { role: string; text: string; meta?: string; action?: React.ReactNode; isJev?: boolean }) {
   return (
     <div>
-      <div className="flex items-center justify-between mb-1">
-        <div className="font-mono text-[11px] text-fg-muted">
-          {role}
-          {meta && <span className="text-fg-dim"> · {meta}</span>}
+      <div className="flex items-center justify-between mb-1.5 gap-2">
+        <div className="mono text-[11px] text-ink">
+          <span className={isJev ? "bg-ink text-white px-1" : "border-[1.5px] border-ink px-1"}>{role}</span>
+          {meta && <span className="text-ink-dim ml-2">{meta}</span>}
         </div>
         {action}
       </div>
-      <div className={`text-[15px] leading-relaxed ${isJev ? "text-fg" : "text-user"}`}>{text}</div>
+      <div className={`text-[15px] leading-relaxed ${isJev ? "text-ink" : "text-ink-soft"}`}>{text}</div>
     </div>
   );
 }
@@ -339,9 +333,7 @@ function Toggle({ on, onClick, label, disabled }: { on: boolean; onClick: () => 
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`px-1.5 py-0.5 rounded border transition-colors disabled:opacity-30 ${
-        on ? "border-accent/60 text-accent" : "border-border text-fg-dim hover:text-fg"
-      }`}
+      className={`btn btn-sm ${on ? "btn-on" : ""}`}
       title={disabled ? "Not supported in this browser" : undefined}
     >
       {label}

@@ -78,37 +78,31 @@ export function JevSettings({
     onClose();
   };
 
-  const field = "w-full bg-bg border border-border rounded px-2 py-1.5 font-mono text-[12px] text-fg placeholder:text-fg-dim focus:outline-none focus:border-accent/60";
+  const field = "field w-full !py-1.5 text-[12px]";
 
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center pt-16 bg-bg/70" onClick={onClose}>
-      <div
-        className="w-[440px] max-w-[calc(100vw-32px)] bg-panel border border-border rounded shadow-xl fade-up"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label="Jev settings"
-      >
-        <div className="flex items-center justify-between px-4 h-10 border-b border-border">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-fg-muted">Jev settings</span>
-          <button onClick={onClose} className="font-mono text-[11px] text-fg-dim hover:text-fg">
-            esc
+    <div className="fixed inset-0 z-40 flex items-start justify-center pt-16 bg-ink/30" onClick={onClose}>
+      <div className="w-[460px] max-w-[calc(100vw-32px)] win fade-up" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Jev settings">
+        <div className="win-title">
+          <span>Jev settings</span>
+          <span className="stripes" />
+          <button onClick={onClose} className="hover:underline">
+            ✕
           </button>
         </div>
 
         <div className="p-4 space-y-4">
           <div>
-            <div className="font-mono text-[11px] text-fg-muted mb-1.5">Decision source</div>
+            <div className="label mb-2">Decision source</div>
             <div className="grid grid-cols-2 gap-2">
               {(["mock", "api"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => set("mode", m)}
-                  className={`text-left border rounded px-3 py-2 transition-colors ${
-                    draft.mode === m ? "border-accent/60 bg-panel-2" : "border-border hover:border-border-strong"
-                  }`}
+                  className={`text-left border-[1.5px] border-ink px-3 py-2 transition-colors ${draft.mode === m ? "bg-pink shadow-[2px_2px_0_var(--ink)]" : "bg-white hover:bg-grey-faint"}`}
                 >
-                  <div className={`font-mono text-[12px] ${m === "api" ? "text-green" : "text-amber"}`}>{m.toUpperCase()}</div>
-                  <div className="text-[11px] text-fg-dim mt-0.5">
+                  <div className="mono text-[12px] text-ink font-medium">{m.toUpperCase()}</div>
+                  <div className="text-[11px] text-ink-soft mt-0.5">
                     {m === "mock" ? "Built-in deterministic scorer. No network." : "TypeSafe Jev — real probabilistic decisions."}
                   </div>
                 </button>
@@ -117,9 +111,9 @@ export function JevSettings({
           </div>
 
           <div className={draft.mode === "api" ? "" : "opacity-40 pointer-events-none"}>
-            <div className="font-mono text-[11px] text-fg-muted mb-1.5">
+            <div className="label mb-2">
               API key
-              {server?.envKeyConfigured && <span className="text-fg-dim"> · server has JEV_API_KEY; leave blank to use it</span>}
+              {server?.envKeyConfigured && <span className="text-ink-dim"> · server has JEV_API_KEY; leave blank to use it</span>}
             </div>
             <input
               type="password"
@@ -130,17 +124,17 @@ export function JevSettings({
               placeholder={server?.envKeyConfigured ? "(using server key)" : "ts-…"}
               className={field}
             />
-            <div className="text-[10px] text-fg-dim mt-1">
+            <div className="mono text-[10px] text-ink-dim mt-1">
               Stored only in this browser (localStorage) and sent with each request. Get a key at typesafe.ai.
             </div>
 
             <div className="grid grid-cols-[1fr_140px] gap-2 mt-3">
               <div>
-                <div className="font-mono text-[11px] text-fg-muted mb-1.5">Endpoint</div>
+                <div className="label mb-2">Endpoint</div>
                 <input value={draft.apiUrl} onChange={(e) => set("apiUrl", e.target.value)} placeholder={server?.apiUrl ?? ""} className={field} spellCheck={false} />
               </div>
               <div>
-                <div className="font-mono text-[11px] text-fg-muted mb-1.5">Model</div>
+                <div className="label mb-2">Model</div>
                 <input value={draft.model} onChange={(e) => set("model", e.target.value)} placeholder={server?.model ?? ""} className={field} spellCheck={false} />
               </div>
             </div>
@@ -149,22 +143,22 @@ export function JevSettings({
               <button
                 onClick={runTest}
                 disabled={test.state === "running" || (!draft.apiKey && !server?.envKeyConfigured)}
-                className="font-mono text-[11px] px-2.5 py-1 rounded border border-border hover:border-border-strong text-fg disabled:opacity-40"
+                className="btn btn-sm"
               >
                 {test.state === "running" ? "testing…" : "Test connection"}
               </button>
               {test.text && (
-                <span className={`font-mono text-[11px] ${test.state === "ok" ? "text-green" : "text-red"} break-all`}>{test.text}</span>
+                <span className={`mono text-[11px] break-all px-1 ${test.state === "ok" ? "bg-ink text-white" : "bg-pink text-ink"}`}>{test.text}</span>
               )}
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-border">
-          <button onClick={onClose} className="font-mono text-[11px] px-3 py-1.5 text-fg-dim hover:text-fg">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t-[1.5px] border-ink bg-grey-faint">
+          <button onClick={onClose} className="btn btn-sm">
             cancel
           </button>
-          <button onClick={save} className="font-mono text-[11px] px-3 py-1.5 rounded bg-fg text-bg hover:bg-accent">
+          <button onClick={save} className="btn btn-sm btn-ink">
             save
           </button>
         </div>

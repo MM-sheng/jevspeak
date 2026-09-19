@@ -6,70 +6,62 @@ import { confidenceBand, describeBand } from "@/lib/language/confidence";
 import { UI } from "@/lib/i18n";
 import type { Locale } from "@/lib/language/locale";
 
-const ORDER = [
-  "intent",
-  "topic",
-  "speech_act",
-  "stance",
-  "main_claim",
-  "qualification",
-  "emotion",
-  "response_goal",
-  "follow_up",
-  "tone",
-  "verbosity",
-];
+const ORDER = ["intent", "topic", "speech_act", "stance", "main_claim", "qualification", "emotion", "response_goal", "follow_up", "tone", "verbosity"];
 
 export function JevBrain({ turn, locale = "en" }: { turn: JevTurn | null; locale?: Locale }) {
   const [expanded, setExpanded] = useState(true);
   const t = UI[locale];
 
-  if (!turn) {
-    return <div className="p-4 text-xs text-fg-dim font-mono">{t.brainEmpty}</div>;
-  }
-
-  const { decision, semantic } = turn;
-  const band = confidenceBand(semantic.confidence);
-
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 h-9 border-b border-border shrink-0">
-        <span className="font-mono text-[11px] text-fg-muted uppercase tracking-wider">{t.brainTitle}</span>
-        <div className="flex items-center gap-3 font-mono text-[11px] text-fg-dim">
-          <span title="Inference source">{decision.model ?? decision.source}</span>
-          <span>{decision.latencyMs}ms</span>
-          <button onClick={() => setExpanded((e) => !e)} className="hover:text-fg">
-            {expanded ? t.collapse : t.expand}
-          </button>
-        </div>
+    <div className="win flex flex-col h-full min-h-0">
+      <div className="win-title">
+        <span>{t.brainTitle}</span>
+        <span className="stripes" />
+        {turn && (
+          <span className="flex gap-3">
+            <span>{turn.decision.model ?? turn.decision.source}</span>
+            <span>{turn.decision.latencyMs}ms</span>
+            <button onClick={() => setExpanded((e) => !e)} className="hover:underline">
+              {expanded ? "▾" : "▸"}
+            </button>
+          </span>
+        )}
       </div>
 
-      <div className="px-4 py-3 border-b border-border space-y-2">
-        <ScoreBar label="confidence" value={decision.scores.confidence} />
-        <div className="font-mono text-[11px] text-fg-dim pl-0.5">→ {describeBand(band)}</div>
-        {semantic.emotion && <ScoreBar label="emotion_intensity" value={decision.scores.emotion_intensity} />}
-      </div>
+      {!turn ? (
+        <div className="p-4 mono text-[11px] text-ink-soft">{t.brainEmpty}</div>
+      ) : (
+        <>
+          <div className="px-3 py-3 border-b-[1.5px] border-ink space-y-2 bg-grey-faint">
+            <ScoreBar label="answerable" value={turn.decision.scores.confidence} />
+            <div className="mono text-[10.5px] text-ink-soft">
+              → confidence {turn.semantic.confidence.toFixed(2)} · {describeBand(confidenceBand(turn.semantic.confidence))}
+            </div>
+            {turn.semantic.emotion && <ScoreBar label="emotion_intensity" value={turn.decision.scores.emotion_intensity} />}
+          </div>
 
-      {expanded && (
-        <div className="overflow-y-auto flex-1">
-          {ORDER.map((k) => {
-            const d = decision.dimensions[k];
-            if (!d) return null;
-            const inIR = isInIR(k, semantic);
-            return (
-              <section key={k} className="px-4 py-3 border-b border-border">
-                <div className="flex items-baseline justify-between mb-1.5">
-                  <span className="font-mono text-[11px] text-fg-muted">{k}</span>
-                  <span className="flex gap-2 font-mono text-[10px] text-fg-dim">
-                    {d.confidence !== undefined && <span title="Jev's calibrated confidence in this decision">{t.conf} {d.confidence.toFixed(2)}</span>}
-                    {!inIR && <span title={t.unusedTitle}>{t.unused}</span>}
-                  </span>
-                </div>
-                <DistributionBars dist={d} />
-              </section>
-            );
-          })}
-        </div>
+          {expanded && (
+            <div className="overflow-y-auto flex-1 min-h-0">
+              {ORDER.map((k) => {
+                const d = turn.decision.dimensions[k];
+                if (!d) return null;
+                const inIR = isInIR(k, turn.semantic);
+                return (
+                  <section key={k} className="px-3 py-3 border-b-[1.5px] border-ink last:border-b-0">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="label !border-l-0 !pl-0 text-[11px]">{k}</span>
+                      <span className="flex gap-2 mono text-[10px] text-ink-dim">
+                        {d.confidence !== undefined && <span title="Jev's calibrated confidence in this decision">{t.conf} {d.confidence.toFixed(2)}</span>}
+                        {!inIR && <span title={t.unusedTitle}>{t.unused}</span>}
+                      </span>
+                    </div>
+                    <DistributionBars dist={d} />
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
