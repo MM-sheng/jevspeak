@@ -1,36 +1,193 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JevSpeak
 
-## Getting Started
+**Jev is a decision model, not a language model.**
 
-First, run the development server:
+JevSpeak explores whether a model that cannot generate free-form text can still
+communicate naturally.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Instead of:
+
+```
+LLM → tokens → sentence
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+JevSpeak uses:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+Jev → decisions → semantic representation →
+deterministic language compiler → sentence
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+> **No GPT / Claude / Gemini model is used to generate Jev's responses.**
+> Claude was used as a software development tool to build this codebase. It is
+> not part of the runtime conversational pipeline, and there is no hidden
+> "rewrite", "grammar fix", or fallback call to any generative model anywhere.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## The idea
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+A language model picks the next token. Jev picks *meaning*.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+On every turn, Jev is asked ~13 questions in parallel about the user's message —
+intent, topic, emotion, which speech act is appropriate, which way a judgment
+leans, which finite claim best fits, what caveat applies, what tone, how long.
+Each answer is a **probability distribution over finite options**, plus a few
+scores (confidence, emotion intensity).
 
-## Deploy on Vercel
+Those decisions are normalized into a typed **Semantic IR**, and a
+**deterministic compiler** turns the IR into English. Same IR in, same sentence
+out, every time.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+User:  Will AI replace programmers?
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Jev:   intent          question       85%
+       stance          mostly_yes     62%
+       main_claim      replace_tasks  54%
+       qualification   not_all_jobs   64%
+       tone            analytical     70%
+       confidence      0.66
+
+IR:    { speechAct: "answer", stance: "mostly_yes", confidence: 0.66,
+         mainClaim: "replace_tasks", qualification: "not_all_jobs", ... }
+
+Compiler trace:
+       confidence(0.66)         → band "I think"
+       short_answer             → "I think so"
+       claim(replace_tasks)     → "AI is going to take over some programming tasks, not the whole job"
+       qualification            → ", though not every role will be affected the same way"
+
+Jev says:
+       "I think so. AI is going to take over some programming tasks, not the
+        whole job, though not every role will be affected the same way."
+```
+
+The **words** come from code. The **meaning** comes from Jev.
+
+## Compiler analogy
+
+| Compiler            | JevSpeak                          |
+| ------------------- | --------------------------------- |
+| Source              | User message + conversation state |
+| Frontend / analysis | Jev (parallel decisions)          |
+| AST / IR            | `SemanticResponse`                |
+| Backend             | `lib/language` compiler           |
+| Target              | English (then speech)             |
+
+## Uncertainty is visible in language
+
+Jev's confidence changes the wording, coarsely and honestly:
+
+| confidence | wording                     |
+| ---------- | --------------------------- |
+| < 0.50     | declines / asks to clarify  |
+| 0.50–0.60  | "Maybe."                    |
+| 0.60–0.75  | "I think so." / "I think…"  |
+| 0.75–0.90  | "Probably."                 |
+| 0.90–0.97  | "Very likely."              |
+| 0.97+      | "Yes." / "I'm confident…"   |
+
+Below the threshold Jev does not bluff: *"I'm not confident enough to answer
+that directly. Which part are you most interested in?"*
+
+## Compositional, not canned
+
+Responses are assembled from semantic layers, not looked up whole:
+
+```
+[acknowledgement] + [short answer] + [claim + hedge] + [qualification] + [follow-up]
+```
+
+Which layers appear is decided by the speech act and length; the wording of
+each is drawn from small phrase banks, chosen by a seed derived from the IR.
+Templates decide wording. The IR decides meaning.
+
+## Architecture
+
+```
+app/api/chat            HTTP entry → runTurn()
+lib/conversation        structured memory (last N turns, topic, sentiment, open question)
+lib/jev                 Jev adapter
+  schema.ts               the parallel questions + raw answer shape
+  mock.ts                 deterministic mock scorer (JEV_MODE=mock)
+  client.ts               real API client (JEV_MODE=api) — the only file that knows the wire format
+  decision.ts             raw answers → JevDecision (distributions) → SemanticResponse (IR)
+lib/language            the language engine (extractable as @jevspeak/language)
+  compiler.ts             repair IR → plan slots → realize phrases → grammar
+  confidence.ts           probability → hedge mappings
+  templates.ts            phrase banks keyed by semantic values
+  grammar.ts              capitalization, punctuation, clause joining
+  seed.ts                 deterministic variation
+lib/tts                 pluggable speech provider (browser SpeechSynthesis today)
+types/                  Semantic IR, conversation, trace types
+components/             chat UI, Jev Brain panel, debug pipeline view
+tests/                  compiler, adapter, and memory tests
+```
+
+Nothing outside `lib/jev` sees raw Jev payloads. Nothing outside
+`lib/language` produces words.
+
+## Running
+
+```bash
+npm install
+cp .env.example .env.local   # JEV_MODE=mock by default
+npm run dev
+```
+
+Open http://localhost:3000. `/chat` is the app.
+
+### Modes
+
+- `JEV_MODE=mock` — a deterministic, feature-based scorer that answers the same
+  questions with distributions. Realistic enough to develop the whole product
+  against. Clearly labelled **JEV MOCK** in the UI. It is not a language model.
+- `JEV_MODE=api` — calls the real Jev API. Requires `JEV_API_URL` and
+  `JEV_API_KEY`; the app refuses to run in api mode without them and reports the
+  error rather than falling back to anything.
+
+The wire format lives entirely in `lib/jev/client.ts` (`toWire` / `fromWire`).
+It POSTs `{ state, questions }` and expects `{ answers: { [id]: { distribution } | { value } } }`.
+Adapt those two functions if Jev's endpoint differs.
+
+### Failure states
+
+API unavailable, malformed responses, missing key, rate limits, network errors,
+and unsupported/contradictory semantic combinations are all surfaced in the UI
+with a code and message. The compiler repairs contradictory IR (e.g.
+"empathize" with a happy emotion, an "answer" below the confidence threshold)
+and records every repair in the trace.
+
+## UI
+
+- **Conversation** — plain chat, with a 🔊 Speak button per reply (browser TTS,
+  auto-speak toggle).
+- **Jev Brain** — every decision with the full distribution, so the
+  alternatives Jev rejected are visible. Dimensions the compiler didn't use for
+  this reply are marked *unused*.
+- **debug** — the full pipeline for the selected reply: raw state → Jev
+  decision → normalized IR (with repairs) → compiler trace → final text.
+
+## Tests
+
+```bash
+npm test
+```
+
+Covers confidence wording, negation, qualification, questions, punctuation,
+emotional responses, missing optional fields, contradictory states, mock
+determinism, normalization of malformed Jev answers, and memory windowing.
+
+## Supported domains (MVP)
+
+Factual-style questions, opinion/stance questions, yes/no judgments, emotional
+acknowledgement, simple advice, clarification, casual follow-up. Anything else
+degrades gracefully to an acknowledgement or a clarifying question — never to a
+generated sentence.
+
+A real limitation worth stating plainly: Jev can only select from the finite
+claim vocabulary in `types/semantic.ts`. It cannot recall a specific fact it
+has no claim for, so *"What's the GDP of Peru in 2019?"* yields a low-confidence
+decline rather than a number. Extending the product means extending the claim
+vocabulary and its templates — not adding a generator.
