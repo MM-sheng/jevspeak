@@ -13,7 +13,7 @@ describe("toWire (TypeSafe System One)", () => {
   it("emits model, state object and keyed questions with criteria", () => {
     const w = toWire(req, "jev-latest");
     expect(w.model).toBe("jev-latest");
-    expect(w.state.user_message).toBe("Will AI replace programmers?");
+    expect(w.state.LATEST_USER_MESSAGE).toBe("Will AI replace programmers?");
     expect(w.questions.intent).toMatchObject({ type: "choice", instructions: expect.any(String) });
     expect(Object.keys((w.questions.intent as { criteria: object }).criteria)).toContain("question");
     expect(w.questions.emotion_intensity).toMatchObject({ type: "score", criteria: expect.any(Array) });

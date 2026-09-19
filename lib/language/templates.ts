@@ -124,7 +124,7 @@ export const QUALIFICATION: Record<Exclude<Qualification, "none">, { connector: 
   industry_specific: { connector: "but", clause: ["it varies a lot by industry", "the details depend on the field"] },
   technology_uncertain: { connector: "and", clause: ["the technology itself could go several ways", "the tech may not develop the way people expect"] },
   depends_on_person: { connector: "though", clause: ["what works depends on you", "your situation might call for something different"] },
-  context_dependent: { connector: "and", clause: ["the details matter a lot here", "the specifics change the answer"] },
+  context_dependent: { connector: "though", clause: ["the details matter a lot here", "it depends on the specifics"] },
   limited_knowledge: { connector: "and", clause: ["my read on this is limited", "I don't have a strong basis for more than that"] },
 };
 

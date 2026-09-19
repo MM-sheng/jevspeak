@@ -94,10 +94,16 @@ export function toSemantic(d: JevDecision): SemanticResponse {
   //  - below the answerability threshold → the compiler declines (no bluffing)
   //  - for judgments, the hedge comes from the probability mass Jev put on the
   //    chosen stance — that *is* its calibrated belief in "yes" / "no"
+  //  - for other acts that carry a claim, from the mass on that claim
   //  - otherwise, answerability itself
   const isJudgment = ["answer", "agree", "disagree", "warn"].includes(speechAct);
-  const confidence =
-    answerable < 0.5 ? answerable : isJudgment && stance !== "uncertain" ? Math.max(0.5, stanceP) : answerable;
+  const claimP = d.dimensions.main_claim.probability;
+  const hasClaim = claim !== "uncertain";
+  let confidence = answerable;
+  if (answerable >= 0.5) {
+    if (isJudgment && stance !== "uncertain") confidence = Math.max(0.5, stanceP);
+    else if (hasClaim) confidence = Math.max(0.5, claimP);
+  }
 
   const sem: SemanticResponse = {
     intent: pick<Intent>("intent"),

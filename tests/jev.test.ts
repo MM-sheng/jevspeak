@@ -60,7 +60,7 @@ describe("normalization", () => {
 });
 
 describe("confidence lowering", () => {
-  const build = (overrides: { answerable: number; stance: Record<string, number>; act?: string }) => {
+  const build = (overrides: { answerable: number; stance: Record<string, number>; act?: string; claim?: Record<string, number> }) => {
     const answers: Record<string, unknown> = {};
     for (const q of JEV_QUESTIONS) {
       if (q.kind === "choice") answers[q.id] = { distribution: { [q.options[0]]: 1 } };
@@ -69,6 +69,7 @@ describe("confidence lowering", () => {
     answers.confidence = { value: overrides.answerable };
     answers.stance = { distribution: overrides.stance };
     answers.speech_act = { distribution: { [overrides.act ?? "answer"]: 1 } };
+    if (overrides.claim) answers.main_claim = { distribution: overrides.claim };
     return toSemantic(normalizeDecision({ answers } as never, { source: "api", latencyMs: 0 }));
   };
 
@@ -82,8 +83,22 @@ describe("confidence lowering", () => {
     expect(s.confidence).toBeCloseTo(0.62);
     expect(compileResponse(s).text).toMatch(/^(I think so|I'd lean yes)/);
   });
-  it("for a non-judgment act, confidence is answerability", () => {
-    const s = build({ answerable: 0.88, stance: { mostly_yes: 0.62 }, act: "acknowledge" });
+  it("for a non-judgment act without a claim, confidence is answerability", () => {
+    const s = build({ answerable: 0.88, stance: { mostly_yes: 0.62 }, act: "acknowledge", claim: { uncertain: 1 } });
     expect(s.confidence).toBeCloseTo(0.88);
+  });
+});
+
+describe("claim-based hedge for non-judgment acts", () => {
+  it("uses the main_claim probability when empathizing", () => {
+    const answers: Record<string, unknown> = {};
+    for (const q of JEV_QUESTIONS) answers[q.id] = q.kind === "choice" ? { distribution: { [q.options[0]]: 1 } } : { value: 0.94 };
+    answers.speech_act = { distribution: { empathize: 1 } };
+    answers.emotion = { distribution: { disappointed: 0.93, sad: 0.07 } };
+    answers.main_claim = { distribution: { one_event_not_defining: 0.6, effort_compounds: 0.4 } };
+    answers.verbosity = { distribution: { short: 1 } };
+    const s = toSemantic(normalizeDecision({ answers } as never, { source: "api", latencyMs: 0 }));
+    expect(s.confidence).toBeCloseTo(0.6);
+    expect(compileResponse(s).text).toMatch(/I think|My sense is/);
   });
 });

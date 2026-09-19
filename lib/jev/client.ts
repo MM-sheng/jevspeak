@@ -44,15 +44,17 @@ export function toWire(req: JevRequest, model: string) {
   const { state } = req;
   return {
     model,
-    // Jev accepts a JSON object as state; we send our structured memory,
-    // with the current message first so it reads as the focus.
+    // Jev accepts a JSON object as state. The latest message is the object of
+    // every question; earlier turns are labelled as background so that a
+    // previous emotional turn does not colour an unrelated new message.
     state: {
-      user_message: state.message,
-      conversation: {
-        current_topic: state.currentTopic,
-        user_sentiment: state.userSentiment,
-        unresolved_question_from_assistant: state.unresolvedQuestion,
-        recent_messages: state.recentMessages,
+      task: "Decide how to respond to LATEST_USER_MESSAGE. Every question is about this message only. BACKGROUND is earlier conversation, for context.",
+      LATEST_USER_MESSAGE: state.message,
+      BACKGROUND: {
+        topic_so_far: state.currentTopic,
+        user_mood_in_earlier_turns: state.userSentiment,
+        open_question_we_asked: state.unresolvedQuestion,
+        earlier_turns: state.recentMessages,
       },
     },
     questions: Object.fromEntries(req.questions.map((q) => [q.id, toWireQuestion(q)])),
