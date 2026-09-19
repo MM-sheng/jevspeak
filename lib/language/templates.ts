@@ -159,6 +159,11 @@ export const CLAIM: Record<Claim, Bank> = {
     "composing text isn't something I do; I pick what to say, not how to invent it",
     "creative writing is out of my range: every sentence I say is assembled from fixed pieces",
   ],
+  base_rate_only: [
+    "I don't know anything about you beyond this conversation — that's just the base rate talking",
+    "that's only a base rate; I have no information about who you are",
+    "I can't know that about you — I'm going on how likely it is for anyone, not on anything about you",
+  ],
   no_self_experience: [
     "I don't have experiences or feelings to report — I'm a decision model",
     "I don't have tastes or an inner life — I'm a decision model, not a person",

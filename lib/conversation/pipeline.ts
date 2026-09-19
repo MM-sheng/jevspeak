@@ -27,6 +27,25 @@ export async function runTurn(message: string, state: ConversationState, overrid
     trace: compiled.trace,
   };
   const next = advanceState(state, message, semantic, compiled.text);
+  if (process.env.NODE_ENV === "production" && process.env.JEV_LOG !== "0") {
+    // Anonymized usage record: no message text, no identifiers. Visible in Vercel logs.
+    console.log(
+      JSON.stringify({
+        ev: "turn",
+        locale,
+        len: message.length,
+        turn: state.turnCount + 1,
+        intent: semantic.intent,
+        topic: semantic.topic,
+        act: semantic.speechAct,
+        claim: semantic.mainClaim ?? null,
+        conf: Number(semantic.confidence.toFixed(2)),
+        answerable: Number(decision.scores.confidence.toFixed(2)),
+        model: decision.model ?? decision.source,
+        ms: decision.latencyMs,
+      }),
+    );
+  }
   if (process.env.NODE_ENV !== "production" && process.env.JEV_LOG !== "0") {
     // Dev-only trace of what Jev decided; never includes credentials.
     const dims = Object.entries(decision.dimensions)

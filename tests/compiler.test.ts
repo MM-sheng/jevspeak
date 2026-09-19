@@ -279,3 +279,16 @@ describe("hedge placement", () => {
     expect(text).toMatch(/^(Very likely|Almost certainly)\./);
   });
 });
+
+describe("questions about the user", () => {
+  it("'Am I Elon Musk?' gets a short answer plus the base-rate disclaimer", () => {
+    const { text } = compileResponse({
+      intent: "question", topic: "personal", speechAct: "answer", tone: "cautious", length: "short",
+      confidence: 0.55, stance: "mostly_yes", mainClaim: "base_rate_only", qualification: "limited_knowledge",
+    });
+    expect(text).toMatch(/^(Maybe|Possibly)\./);
+    expect(text).toMatch(/base rate|about you|who you are/);
+    expect(text).not.toMatch(/maybe I|possibly I/i); // no hedge on the plain claim
+    wellFormed(text);
+  });
+});

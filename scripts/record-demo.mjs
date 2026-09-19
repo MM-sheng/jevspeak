@@ -5,7 +5,7 @@
  *   node scripts/record-demo.mjs [baseUrl]
  */
 import { chromium } from "playwright";
-import { mkdirSync, readdirSync, renameSync } from "node:fs";
+import { mkdirSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 
 const BASE = process.argv[2] ?? "https://jevspeak.org";
 const OUT = ".demo";
@@ -20,6 +20,7 @@ const ctx = await browser.newContext({
   locale: "en-US",
 });
 const page = await ctx.newPage();
+const t0 = Date.now();
 
 // Fake cursor so clicks are visible in the recording.
 await page.addInitScript(() => {
@@ -62,7 +63,9 @@ async function waitForReply(count) {
 
 await page.goto(`${BASE}/chat?lang=en`, { waitUntil: "networkidle" });
 await page.mouse.move(700, 500);
-await sleep(1200);
+await sleep(600);
+// everything before this point is page load; trim it when encoding
+const trimSec = Math.max(0, (Date.now() - t0) / 1000 - 0.4);
 
 // 1. Ask the canonical question
 const input = page.getByPlaceholder(/Say something/);
@@ -109,4 +112,5 @@ await browser.close();
 
 const webm = readdirSync(OUT).find((f) => f.endsWith(".webm"));
 renameSync(`${OUT}/${webm}`, `${OUT}/demo.webm`);
-console.log(`saved ${OUT}/demo.webm`);
+writeFileSync(`${OUT}/trim.txt`, trimSec.toFixed(2));
+console.log(`saved ${OUT}/demo.webm (trim first ${trimSec.toFixed(2)}s)`);

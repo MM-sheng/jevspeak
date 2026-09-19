@@ -168,12 +168,13 @@ export const CLAIMS = [
   "out_of_scope_factual",
   "out_of_scope_creative",
   "no_self_experience",
+  "base_rate_only",
 ] as const;
 
 /** Claims that state a limitation of the model itself; rendered without a yes/no short answer. */
 export const SCOPE_CLAIMS: ReadonlySet<Claim> = new Set<Claim>(["out_of_scope_factual", "out_of_scope_creative", "no_self_experience"]);
 /** Claims stated plainly, never hedged or prefixed (scope statements, congratulations). */
-export const PLAIN_CLAIMS: ReadonlySet<Claim> = new Set<Claim>([...SCOPE_CLAIMS, "celebrate", "earned_it"]);
+export const PLAIN_CLAIMS: ReadonlySet<Claim> = new Set<Claim>([...SCOPE_CLAIMS, "celebrate", "earned_it", "base_rate_only"]);
 /** Claims whose meaning already *is* "it depends"; a context qualification after them is redundant. */
 export const DEPENDS_CLAIMS: ReadonlySet<Claim> = new Set<Claim>(["depends", "depends_on_goals", "tradeoffs"]);
 /** Claims that only restate a yes/no short answer. */

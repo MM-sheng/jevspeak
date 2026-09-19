@@ -167,6 +167,7 @@ const MAIN_CLAIM = choice<Claim>("main_claim", "Which single proposition best ca
   out_of_scope_factual: "They want a fact, figure, or explanation. This model makes judgments; it cannot look up or recall facts",
   out_of_scope_creative: "They want a joke, story, or other creative text. This model chooses meaning; it does not compose text",
   no_self_experience: "They ask about the model's feelings, preferences, or consciousness. It is a decision model with no experiences to report",
+  base_rate_only: "They ask who they are or a fact about their own life (identity, name, age, what they own). We know nothing about them, so any answer is only a base rate",
 });
 
 const QUALIFICATION = choice<Qualification>("qualification", "What caveat, if any, should accompany the response?", {
