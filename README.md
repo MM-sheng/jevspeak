@@ -237,6 +237,11 @@ the real Jev, look where it was forced into `depends` / `uncertain`, and add
 the claims it was reaching for. When those claims were added, Jev selected
 them with 78–100% probability on the same messages.
 
+## Contact
+
+- Email: shengmm81@gmail.com
+- X: [@LuigiProof](https://x.com/LuigiProof)
+
 ## License
 
 MIT.

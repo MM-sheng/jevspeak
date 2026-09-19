@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Header } from "./Header";
 import type { Locale } from "@/lib/language/locale";
+import { SITE } from "@/lib/site";
 
 const COPY = {
   en: {
@@ -32,6 +33,8 @@ const COPY = {
     bigB: "Words by code.",
     bigNote: "*Same decisions, two languages: switch EN / 中文 and only the rendering layer changes.",
     footer: "Built with Jev by TypeSafe. Claude was used as a development tool, not in the runtime pipeline.",
+    contact: "Contact",
+    source: "Source",
   },
   zh: {
     tagline: "决策 → 语言 → 语音",
@@ -60,6 +63,8 @@ const COPY = {
     bigB: "文字来自代码。",
     bigNote: "*同样的决策,两种语言:切换 EN / 中文,只有渲染层在变。",
     footer: "基于 TypeSafe 的 Jev 构建。Claude 在开发阶段被用作工具,不参与运行时管线。",
+    contact: "联系",
+    source: "源码",
   },
 } as const;
 
@@ -169,11 +174,27 @@ export function Landing() {
         </div>
       </section>
 
-      <footer className="max-w-5xl mx-auto w-full px-6 py-6 mono text-[11px] text-ink-soft flex flex-wrap gap-x-6 gap-y-1 justify-between">
-        <span>{c.footer}</span>
-        <a href="https://github.com/MM-sheng/jevspeak" className="hover:bg-ink hover:text-white px-1 -mx-1">
-          github.com/MM-sheng/jevspeak
-        </a>
+      <footer className="border-t-[1.5px] border-ink">
+        <div className="max-w-5xl mx-auto w-full px-6 py-8 grid sm:grid-cols-[1fr_auto] gap-8 items-start">
+          <div className="label mono text-[11px] text-ink-soft max-w-md">{c.footer}</div>
+          <div className="flex flex-col sm:flex-row gap-6">
+            <div className="label">
+              <div className="mono text-[11px] text-ink-dim mb-2">{c.contact}</div>
+              <a href={`mailto:${SITE.email}`} className="block mono text-[12px] text-ink hover:bg-ink hover:text-white px-1 -mx-1 w-fit">
+                ✉ {SITE.email}
+              </a>
+              <a href={SITE.x} target="_blank" rel="noreferrer" className="block mono text-[12px] text-ink hover:bg-ink hover:text-white px-1 -mx-1 w-fit mt-1">
+                𝕏 {SITE.xHandle}
+              </a>
+            </div>
+            <div className="label">
+              <div className="mono text-[11px] text-ink-dim mb-2">{c.source}</div>
+              <a href={SITE.github} target="_blank" rel="noreferrer" className="block mono text-[12px] text-ink hover:bg-ink hover:text-white px-1 -mx-1 w-fit">
+                ⌥ github.com/MM-sheng/jevspeak
+              </a>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE } from "@/lib/site";
 
 export function Header({
   mode,
@@ -27,6 +28,9 @@ export function Header({
           </span>
         )}
         {right}
+        <a href={SITE.github} target="_blank" rel="noreferrer" className="btn btn-sm" title="Source on GitHub">
+          GitHub ↗
+        </a>
       </div>
     </header>
   );
