@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runTurn } from "@/lib/conversation/pipeline";
 import { emptyState, isConversationState } from "@/lib/conversation/state";
-import { JevError } from "@/lib/jev";
+import { JevError, overrideFromHeaders } from "@/lib/jev";
 import type { ChatError, ChatResponse } from "@/types/conversation";
 
 export const runtime = "nodejs";
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const convo = isConversationState(state) ? state : emptyState();
 
   try {
-    const result = await runTurn(message.trim(), convo);
+    const result = await runTurn(message.trim(), convo, overrideFromHeaders(req.headers));
     return NextResponse.json<ChatResponse>({ ok: true, ...result });
   } catch (e) {
     if (e instanceof JevError) {

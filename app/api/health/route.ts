@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { getJevMode } from "@/lib/jev";
+import { resolveJevConfig } from "@/lib/jev";
 
+/** Server-side defaults. Never returns the key itself. */
 export async function GET() {
-  const mode = getJevMode();
+  const cfg = resolveJevConfig();
   return NextResponse.json({
     ok: true,
-    mode,
-    apiConfigured: mode === "api" ? Boolean(process.env.JEV_API_KEY) : null,
-    model: mode === "api" ? process.env.JEV_MODEL || "jev-latest" : null,
+    mode: cfg.mode,
+    envKeyConfigured: cfg.keySource === "env",
+    apiUrl: cfg.apiUrl,
+    model: cfg.model,
   });
 }

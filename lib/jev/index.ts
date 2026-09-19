@@ -4,43 +4,49 @@
  */
 import { JEV_QUESTIONS, type JevRequest, type JevState } from "./schema";
 import { mockInfer } from "./mock";
-import { apiInfer, DEFAULT_JEV_API_URL, DEFAULT_JEV_MODEL } from "./client";
+import { apiInfer } from "./client";
 import { normalizeDecision, toSemantic } from "./decision";
 import { JevError } from "./errors";
+import { resolveJevConfig, type JevOverride } from "./config";
 import type { JevDecision, SemanticResponse } from "@/types/semantic";
-
-export type JevMode = "mock" | "api";
-
-export function getJevMode(): JevMode {
-  const m = (process.env.JEV_MODE ?? "mock").toLowerCase();
-  return m === "api" ? "api" : "mock";
-}
 
 export interface InferenceResult {
   decision: JevDecision;
   semantic: SemanticResponse;
 }
 
-export async function inferDecision(state: JevState): Promise<InferenceResult> {
-  const mode = getJevMode();
+export async function inferDecision(state: JevState, override?: JevOverride): Promise<InferenceResult> {
+  const cfg = resolveJevConfig(override);
   const req: JevRequest = { state, questions: JEV_QUESTIONS };
   const started = Date.now();
 
   let raw;
-  if (mode === "api") {
-    const apiKey = process.env.JEV_API_KEY;
-    if (!apiKey) throw new JevError("missing_key", "JEV_MODE=api but JEV_API_KEY is not set.");
-    raw = await apiInfer(req, {
-      apiKey,
-      apiUrl: process.env.JEV_API_URL || DEFAULT_JEV_API_URL,
-      model: process.env.JEV_MODEL || DEFAULT_JEV_MODEL,
-    });
+  if (cfg.mode === "api") {
+    if (!cfg.apiKey) throw new JevError("missing_key", "Jev API mode is on but no API key is set. Add one in Settings or JEV_API_KEY.");
+    raw = await apiInfer(req, { apiKey: cfg.apiKey, apiUrl: cfg.apiUrl, model: cfg.model });
   } else {
     raw = await mockInfer(req);
   }
 
-  const decision = normalizeDecision(raw, { source: mode, latencyMs: Date.now() - started });
+  const decision = normalizeDecision(raw, { source: cfg.mode, latencyMs: Date.now() - started });
   return { decision, semantic: toSemantic(decision) };
 }
 
+/** One tiny real request to validate a key/endpoint. Returns the resolved model. */
+export async function verifyJev(override?: JevOverride): Promise<{ model: string; latencyMs: number }> {
+  const cfg = resolveJevConfig({ ...override, mode: "api" });
+  if (!cfg.apiKey) throw new JevError("missing_key", "No API key provided.");
+  const started = Date.now();
+  const raw = await apiInfer(
+    {
+      state: { message: "hello", recentMessages: [], currentTopic: null, userSentiment: null, unresolvedQuestion: null },
+      questions: [JEV_QUESTIONS[0]],
+    },
+    { apiKey: cfg.apiKey, apiUrl: cfg.apiUrl, model: cfg.model, timeoutMs: 15000 },
+  );
+  return { model: raw.model ?? cfg.model, latencyMs: Date.now() - started };
+}
+
 export { JevError } from "./errors";
+export { envMode as getJevMode, resolveJevConfig, overrideFromHeaders } from "./config";
+export type { JevMode, JevOverride } from "./config";

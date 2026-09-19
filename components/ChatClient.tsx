@@ -6,6 +6,7 @@ import { Header } from "./Header";
 import { JevBrain } from "./JevBrain";
 import { DebugPanel } from "./DebugPanel";
 import { useSpeech } from "./useSpeech";
+import { JevSettings, loadSettings, settingsHeaders, DEFAULT_SETTINGS, type JevSettingsValue } from "./JevSettings";
 
 const SUGGESTIONS = [
   "Will AI replace programmers?",
@@ -33,6 +34,10 @@ export function ChatClient() {
   const [selected, setSelected] = useState<string | null>(null);
   const [debug, setDebug] = useState(false);
   const [brainOpen, setBrainOpen] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<JevSettingsValue>(() =>
+    typeof localStorage === "undefined" ? DEFAULT_SETTINGS : loadSettings(),
+  );
   const [autoSpeak, setAutoSpeak] = useState(() => {
     try {
       return typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1";
@@ -47,9 +52,16 @@ export function ChatClient() {
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
-      .then((j) => setMode(j.mode))
+      .then((j) => setMode((m) => m ?? j.mode))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSettingsOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [settingsOpen]);
 
   const toggleAutoSpeak = () =>
     setAutoSpeak((v) => {
@@ -74,7 +86,7 @@ export function ChatClient() {
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", ...settingsHeaders(settings) },
           body: JSON.stringify({ message: msg, state }),
         });
         const json = (await res.json()) as ChatResponse | ChatError;
@@ -94,7 +106,7 @@ export function ChatClient() {
         inputRef.current?.focus();
       }
     },
-    [pending, state, autoSpeak, speech],
+    [pending, state, autoSpeak, speech, settings],
   );
 
   const reset = () => {
@@ -109,6 +121,16 @@ export function ChatClient() {
 
   return (
     <div className="flex flex-col h-screen">
+      {settingsOpen && (
+        <JevSettings
+          value={settings}
+          onChange={(v) => {
+            setSettings(v);
+            setMode(v.mode);
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
       <Header
         mode={mode}
         right={
@@ -116,6 +138,13 @@ export function ChatClient() {
             <Toggle on={autoSpeak} onClick={toggleAutoSpeak} label="auto-speak" disabled={!speech.supported} />
             <Toggle on={debug} onClick={() => setDebug((v) => !v)} label="debug" />
             <Toggle on={brainOpen} onClick={() => setBrainOpen((v) => !v)} label="brain" />
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="px-1.5 py-0.5 rounded border border-border text-fg-dim hover:text-fg"
+              title="Jev API settings"
+            >
+              settings
+            </button>
             <button onClick={reset} className="text-fg-dim hover:text-fg px-1" title="Clear conversation and memory">
               reset
             </button>
@@ -200,7 +229,17 @@ export function ChatClient() {
                   <div className="font-mono text-[11px] text-red uppercase tracking-wider mb-1">{error.code}</div>
                   <div className="text-fg">{error.message}</div>
                   {error.detail && <pre className="mt-2 text-[11px] text-fg-dim whitespace-pre-wrap">{error.detail}</pre>}
-                  <div className="mt-2 text-[11px] text-fg-dim">No fallback model was called.</div>
+                  <div className="mt-2 text-[11px] text-fg-dim">
+                    No fallback model was called.
+                    {error.code === "jev_missing_key" && (
+                      <>
+                        {" "}
+                        <button onClick={() => setSettingsOpen(true)} className="text-accent hover:underline">
+                          Open settings →
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
               {speech.error && <div className="text-xs text-red">{speech.error}</div>}
