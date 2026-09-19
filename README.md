@@ -1,5 +1,7 @@
 # JevSpeak
 
+**Live: [jevspeak.org](https://jevspeak.org)**
+
 **Jev is a decision model, not a language model.**
 
 JevSpeak explores whether a model that cannot generate free-form text can still
@@ -158,6 +160,11 @@ cp .env.example .env.local   # JEV_MODE=mock by default
 npm run dev
 ```
 
+To use the real Jev API, either open **settings** in the app and paste your
+key (kept in your browser only), or run `npm run set-key` for an interactive
+prompt that writes `.env.local` (`npm run set-key:vercel` also sets it on
+Vercel). Keys never go into git: `.env*` is ignored.
+
 Open http://localhost:3000. `/chat` is the app.
 
 ### Modes
@@ -223,3 +230,7 @@ claim vocabulary in `types/semantic.ts`. It cannot recall a specific fact it
 has no claim for, so *"What's the GDP of Peru in 2019?"* yields a low-confidence
 decline rather than a number. Extending the product means extending the claim
 vocabulary and its templates — not adding a generator.
+
+## License
+
+MIT.
