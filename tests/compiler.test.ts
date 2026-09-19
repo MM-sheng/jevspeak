@@ -184,3 +184,16 @@ describe("length", () => {
     expect(min.length).toBeLessThan(med.length);
   });
 });
+
+describe("decline with a claim", () => {
+  it("keeps Jev's advice claim after declining a request", () => {
+    const { text } = compileResponse({
+      intent: "request", topic: "markets", speechAct: "decline", tone: "cautious", length: "medium",
+      confidence: 0.9, mainClaim: "seek_professional", qualification: "depends_on_person", followUp: "ask_goal",
+    });
+    expect(text).toMatch(/not a call I can make|can't tell you what to do/);
+    expect(text).toMatch(/professional|qualified/);
+    expect(text).toMatch(/\?$/);
+    wellFormed(text);
+  });
+});

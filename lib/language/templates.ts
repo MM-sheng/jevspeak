@@ -154,6 +154,11 @@ export const DECLINE: Bank = [
   "I'm not confident enough to answer that directly",
   "I don't have a solid enough read on that to answer it straight",
 ];
+/** Decline phrasing when the user asked what *they* should do. */
+export const DECLINE_REQUEST: Bank = [
+  "That's not a call I can make for you",
+  "I can't tell you what to do there",
+];
 
 export const CLARIFY: Bank = [
   "I'm not sure I follow",

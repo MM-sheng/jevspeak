@@ -181,6 +181,9 @@ export function plan(input: SemanticResponse): Plan {
     case "decline":
       slots.push("decline");
       if (hasQual && ir.qualification === "limited_knowledge") slots.push("qualification");
+      // Jev may decline the direct question yet still hand us a claim (usually
+      // advice, e.g. "seek_professional"); render it as the "but" clause.
+      if (hasClaim && ir.mainClaim !== "uncertain" && ir.length !== "minimal") slots.push("claim");
       if (hasFollow) slots.push("follow_up");
       break;
 
@@ -311,7 +314,8 @@ function realize(p: Plan, seed: number, steps: TraceStep[]): Fragment[] {
         break;
       }
       case "decline": {
-        const text = pick(T.DECLINE, seed, "decline");
+        const bank = p.ir.intent === "request" ? T.DECLINE_REQUEST : T.DECLINE;
+        const text = pick(bank, seed, "decline");
         steps.push({ stage: "realize", slot, input: `confidence=${p.ir.confidence.toFixed(2)} < 0.50`, output: text });
         sentence(text);
         break;
