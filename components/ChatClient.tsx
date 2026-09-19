@@ -44,7 +44,7 @@ export function ChatClient() {
     const timer = setTimeout(() => {
       const saved = loadSettings();
       setSettings(saved);
-      setMode(saved.mode);
+      if (saved.mode !== "auto") setMode(saved.mode);
       try {
         setAutoSpeak(localStorage.getItem(STORAGE_KEY) === "1");
         const q = new URLSearchParams(window.location.search).get("lang");
@@ -142,7 +142,8 @@ export function ChatClient() {
           value={settings}
           onChange={(v) => {
             setSettings(v);
-            setMode(v.mode);
+            if (v.mode !== "auto") setMode(v.mode);
+            else fetch("/api/health").then((r) => r.json()).then((j) => setMode(j.mode)).catch(() => {});
           }}
           onClose={() => setSettingsOpen(false)}
         />

@@ -2,14 +2,15 @@
 import { useEffect, useState } from "react";
 
 export interface JevSettingsValue {
-  mode: "mock" | "api";
+  /** "auto" = follow the server's JEV_MODE; only an explicit choice is sent as a header. */
+  mode: "auto" | "mock" | "api";
   apiKey: string;
   apiUrl: string;
   model: string;
 }
 
 export const SETTINGS_KEY = "jevspeak.jev";
-export const DEFAULT_SETTINGS: JevSettingsValue = { mode: "mock", apiKey: "", apiUrl: "", model: "" };
+export const DEFAULT_SETTINGS: JevSettingsValue = { mode: "auto", apiKey: "", apiUrl: "", model: "" };
 
 export function loadSettings(): JevSettingsValue {
   try {
@@ -22,7 +23,8 @@ export function loadSettings(): JevSettingsValue {
 
 /** Headers sent with every /api call so the server uses these credentials for that request only. */
 export function settingsHeaders(s: JevSettingsValue): Record<string, string> {
-  const h: Record<string, string> = { "x-jev-mode": s.mode };
+  const h: Record<string, string> = {};
+  if (s.mode !== "auto") h["x-jev-mode"] = s.mode;
   if (s.apiKey) h["x-jev-api-key"] = s.apiKey;
   if (s.apiUrl) h["x-jev-api-url"] = s.apiUrl;
   if (s.model) h["x-jev-model"] = s.model;
@@ -57,6 +59,7 @@ export function JevSettings({
   }, []);
 
   const set = <K extends keyof JevSettingsValue>(k: K, v: JevSettingsValue[K]) => setDraft((d) => ({ ...d, [k]: v }));
+  const effectiveMode = draft.mode === "auto" ? (server?.mode ?? "mock") : draft.mode;
 
   const runTest = async () => {
     setTest({ state: "running" });
@@ -99,9 +102,12 @@ export function JevSettings({
                 <button
                   key={m}
                   onClick={() => set("mode", m)}
-                  className={`text-left border-[1.5px] border-ink px-3 py-2 transition-colors ${draft.mode === m ? "bg-pink shadow-[2px_2px_0_var(--ink)]" : "bg-white hover:bg-grey-faint"}`}
+                  className={`text-left border-[1.5px] border-ink px-3 py-2 transition-colors ${effectiveMode === m ? "bg-pink shadow-[2px_2px_0_var(--ink)]" : "bg-white hover:bg-grey-faint"}`}
                 >
-                  <div className="mono text-[12px] text-ink font-medium">{m.toUpperCase()}</div>
+                  <div className="mono text-[12px] text-ink font-medium">
+                    {m.toUpperCase()}
+                    {draft.mode === "auto" && server?.mode === m && <span className="text-ink-dim font-normal"> · server default</span>}
+                  </div>
                   <div className="text-[11px] text-ink-soft mt-0.5">
                     {m === "mock" ? "Built-in deterministic scorer. No network." : "TypeSafe Jev — real probabilistic decisions."}
                   </div>
@@ -110,7 +116,7 @@ export function JevSettings({
             </div>
           </div>
 
-          <div className={draft.mode === "api" ? "" : "opacity-40 pointer-events-none"}>
+          <div className={effectiveMode === "api" ? "" : "opacity-40 pointer-events-none"}>
             <div className="label mb-2">
               API key
               {server?.envKeyConfigured && <span className="text-ink-dim"> · server has JEV_API_KEY; leave blank to use it</span>}
