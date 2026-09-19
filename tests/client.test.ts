@@ -56,7 +56,8 @@ describe("fromWire", () => {
     expect(d.scores.confidence).toBe(0.77);
     const sem = toSemantic(d);
     expect(sem.intent).toBe("question");
-    expect(sem.confidence).toBe(0.77);
+    // speech_act=answer with stance mostly_yes @ 0.70 → the hedge follows the stance probability
+    expect(sem.confidence).toBeCloseTo(0.7);
   });
 
   it("rejects a missing answers object", () => {

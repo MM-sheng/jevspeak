@@ -27,5 +27,12 @@ export async function runTurn(message: string, state: ConversationState, overrid
     trace: compiled.trace,
   };
   const next = advanceState(state, message, semantic, compiled.text);
+  if (process.env.NODE_ENV !== "production" && process.env.JEV_LOG !== "0") {
+    // Dev-only trace of what Jev decided; never includes credentials.
+    const dims = Object.entries(decision.dimensions)
+      .map(([k, d]) => `${k}=${d.choice}(${Math.round(d.probability * 100)}%)`)
+      .join(" ");
+    console.log(`[jev:${decision.model ?? decision.source}] "${message}" → conf=${decision.scores.confidence.toFixed(2)} ${dims}\n  ⇒ ${compiled.text}`);
+  }
   return { user, jev, state: next, mode: resolveJevConfig(override).mode };
 }

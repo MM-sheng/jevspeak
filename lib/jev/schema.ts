@@ -95,11 +95,11 @@ const EMOTION_INTENSITY: ScoreQuestion = {
 };
 
 const SPEECH_ACT = choice<SpeechAct>("speech_act", "What kind of response is appropriate?", {
-  answer: "Give a direct answer or judgment to a question",
+  answer: "Give a direct answer or considered judgment to a question — hedged is fine",
   acknowledge: "Register what they said without adding a judgment",
   agree: "Express agreement with an opinion they stated",
   disagree: "Push back on an opinion they stated",
-  clarify: "The message is ambiguous or too thin; ask what they mean before answering",
+  clarify: "The message cannot be interpreted (gibberish, a fragment, or genuinely ambiguous between very different readings); ask what they mean",
   empathize: "They shared something negative; respond to the feeling first",
   encourage: "They need a boost; respond with encouragement",
   warn: "There is a risk they should be cautious about (health, money, safety)",
@@ -119,10 +119,10 @@ const STANCE = choice<Stance>("stance", "If this calls for a judgment, which way
 const CONFIDENCE: NoulQuestion = {
   id: "confidence",
   kind: "noul",
-  prompt: "Is there enough basis to respond to this directly and with reasonable confidence?",
+  prompt: "Can this message be responded to substantively, without inventing facts?",
   criteria: {
-    true: "The message is clear and the appropriate response can be given without guessing at specifics (e.g. exact figures, private facts, unpredictable events)",
-    false: "Answering directly would require guessing, precise facts we cannot know, or predicting something unpredictable",
+    true: "A reasonable response is possible: a hedged opinion or judgment about a trend, emotional support, general advice, agreement, or a simple social reply. Uncertainty about the future is fine as long as a considered view can be given.",
+    false: "A real response would require specific facts we do not have (exact figures, dates, statistics, private details about the user), or the message is unintelligible.",
   },
 };
 

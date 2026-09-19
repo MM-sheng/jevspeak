@@ -58,3 +58,32 @@ describe("normalization", () => {
     expect(d.scores.confidence).toBe(1);
   });
 });
+
+describe("confidence lowering", () => {
+  const build = (overrides: { answerable: number; stance: Record<string, number>; act?: string }) => {
+    const answers: Record<string, unknown> = {};
+    for (const q of JEV_QUESTIONS) {
+      if (q.kind === "choice") answers[q.id] = { distribution: { [q.options[0]]: 1 } };
+      else answers[q.id] = { value: 0.5 };
+    }
+    answers.confidence = { value: overrides.answerable };
+    answers.stance = { distribution: overrides.stance };
+    answers.speech_act = { distribution: { [overrides.act ?? "answer"]: 1 } };
+    return toSemantic(normalizeDecision({ answers } as never, { source: "api", latencyMs: 0 }));
+  };
+
+  it("below the answerability threshold, confidence is the (low) answerability so the compiler declines", () => {
+    const s = build({ answerable: 0.32, stance: { mostly_yes: 0.9 } });
+    expect(s.confidence).toBe(0.32);
+    expect(compileResponse(s).text).toMatch(/not confident|solid enough/);
+  });
+  it("for a judgment, confidence is the probability Jev put on the chosen stance", () => {
+    const s = build({ answerable: 0.9, stance: { mostly_yes: 0.62, mixed: 0.3, mostly_no: 0.08 } });
+    expect(s.confidence).toBeCloseTo(0.62);
+    expect(compileResponse(s).text).toMatch(/^(I think so|I'd lean yes)/);
+  });
+  it("for a non-judgment act, confidence is answerability", () => {
+    const s = build({ answerable: 0.88, stance: { mostly_yes: 0.62 }, act: "acknowledge" });
+    expect(s.confidence).toBeCloseTo(0.88);
+  });
+});

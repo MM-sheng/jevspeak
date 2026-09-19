@@ -35,19 +35,25 @@ export function ChatClient() {
   const [debug, setDebug] = useState(false);
   const [brainOpen, setBrainOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState<JevSettingsValue>(() =>
-    typeof localStorage === "undefined" ? DEFAULT_SETTINGS : loadSettings(),
-  );
-  const [autoSpeak, setAutoSpeak] = useState(() => {
-    try {
-      return typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [settings, setSettings] = useState<JevSettingsValue>(DEFAULT_SETTINGS);
+  const [autoSpeak, setAutoSpeak] = useState(false);
   const speech = useSpeech();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    // Browser-only state, read after hydration so server and client markup match.
+    const timer = setTimeout(() => {
+      const saved = loadSettings();
+      setSettings(saved);
+      setMode(saved.mode);
+      try {
+        setAutoSpeak(localStorage.getItem(STORAGE_KEY) === "1");
+      } catch {}
+      if (new URLSearchParams(window.location.search).has("settings")) setSettingsOpen(true);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     fetch("/api/health")

@@ -86,20 +86,32 @@ export function toSemantic(d: JevDecision): SemanticResponse {
   const qualification = pick<Qualification>("qualification");
   const followUp = pick<FollowUp>("follow_up");
 
+  const stance = pick<Stance>("stance");
+  const stanceP = d.dimensions.stance.probability;
+  const answerable = d.scores.confidence; // noul: "can this be responded to substantively?"
+
+  // Confidence that reaches the language layer:
+  //  - below the answerability threshold → the compiler declines (no bluffing)
+  //  - for judgments, the hedge comes from the probability mass Jev put on the
+  //    chosen stance — that *is* its calibrated belief in "yes" / "no"
+  //  - otherwise, answerability itself
+  const isJudgment = ["answer", "agree", "disagree", "warn"].includes(speechAct);
+  const confidence =
+    answerable < 0.5 ? answerable : isJudgment && stance !== "uncertain" ? Math.max(0.5, stanceP) : answerable;
+
   const sem: SemanticResponse = {
     intent: pick<Intent>("intent"),
     topic: pick<Topic>("topic"),
     speechAct,
     tone: pick<Tone>("tone"),
     length: pick<ResponseLength>("verbosity"),
-    confidence: d.scores.confidence,
+    confidence,
     responseGoal: pick<ResponseGoal>("response_goal"),
   };
 
   // Only attach optional dimensions where they carry meaning; the compiler
   // treats absence as "no such layer".
-  const stance = pick<Stance>("stance");
-  if (["answer", "agree", "disagree", "warn"].includes(speechAct)) sem.stance = stance;
+  if (isJudgment) sem.stance = stance;
   if (emotion !== "neutral") {
     sem.emotion = emotion;
     sem.emotionIntensity = d.scores.emotion_intensity;
