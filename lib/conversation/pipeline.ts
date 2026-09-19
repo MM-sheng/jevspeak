@@ -6,17 +6,17 @@
  * There is no LLM call anywhere in this path.
  */
 import { inferDecision, resolveJevConfig, type JevOverride } from "@/lib/jev";
-import { compileResponse } from "@/lib/language";
+import { compileResponse, type Locale } from "@/lib/language";
 import { advanceState, toJevState } from "./state";
 import type { ConversationState, JevTurn, UserTurn } from "@/types/conversation";
 
 let counter = 0;
 const id = () => `${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
-export async function runTurn(message: string, state: ConversationState, override?: JevOverride) {
+export async function runTurn(message: string, state: ConversationState, override?: JevOverride, locale: Locale = "en") {
   const user: UserTurn = { role: "user", id: id(), text: message, at: Date.now() };
   const { decision, semantic } = await inferDecision(toJevState(state, message), override);
-  const compiled = compileResponse(semantic);
+  const compiled = compileResponse(semantic, { locale });
   const jev: JevTurn = {
     role: "jev",
     id: id(),
@@ -32,7 +32,7 @@ export async function runTurn(message: string, state: ConversationState, overrid
     const dims = Object.entries(decision.dimensions)
       .map(([k, d]) => `${k}=${d.choice}(${Math.round(d.probability * 100)}%)`)
       .join(" ");
-    console.log(`[jev:${decision.model ?? decision.source}] "${message}" → conf=${decision.scores.confidence.toFixed(2)} ${dims}\n  ⇒ ${compiled.text}`);
+    console.log(`[jev:${decision.model ?? decision.source}/${locale}] "${message}" → conf=${decision.scores.confidence.toFixed(2)} ${dims}\n  ⇒ ${compiled.text}`);
   }
   return { user, jev, state: next, mode: resolveJevConfig(override).mode };
 }

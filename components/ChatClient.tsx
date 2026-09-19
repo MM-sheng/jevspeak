@@ -7,16 +7,11 @@ import { JevBrain } from "./JevBrain";
 import { DebugPanel } from "./DebugPanel";
 import { useSpeech } from "./useSpeech";
 import { JevSettings, loadSettings, settingsHeaders, DEFAULT_SETTINGS, type JevSettingsValue } from "./JevSettings";
-
-const SUGGESTIONS = [
-  "Will AI replace programmers?",
-  "I failed my exam today.",
-  "Should I invest in crypto right now?",
-  "I'm so tired lately, any advice?",
-  "What's the exact GDP of Peru in 2019?",
-];
+import { UI } from "@/lib/i18n";
+import { getPack, type Locale } from "@/lib/language";
 
 const STORAGE_KEY = "jevspeak.autospeak";
+const LOCALE_KEY = "jevspeak.locale";
 
 interface TurnRecord {
   user: Turn & { role: "user" };
@@ -37,6 +32,8 @@ export function ChatClient() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<JevSettingsValue>(DEFAULT_SETTINGS);
   const [autoSpeak, setAutoSpeak] = useState(false);
+  const [locale, setLocale] = useState<Locale>("en");
+  const t = UI[locale];
   const speech = useSpeech();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -49,6 +46,9 @@ export function ChatClient() {
       setMode(saved.mode);
       try {
         setAutoSpeak(localStorage.getItem(STORAGE_KEY) === "1");
+        const q = new URLSearchParams(window.location.search).get("lang");
+        const saved = q ?? localStorage.getItem(LOCALE_KEY) ?? (navigator.language.startsWith("zh") ? "zh" : "en");
+        setLocale(saved === "zh" ? "zh" : "en");
       } catch {}
       if (new URLSearchParams(window.location.search).has("settings")) setSettingsOpen(true);
     }, 0);
@@ -68,6 +68,15 @@ export function ChatClient() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [settingsOpen]);
+
+  const toggleLocale = () =>
+    setLocale((l) => {
+      const next: Locale = l === "en" ? "zh" : "en";
+      try {
+        localStorage.setItem(LOCALE_KEY, next);
+      } catch {}
+      return next;
+    });
 
   const toggleAutoSpeak = () =>
     setAutoSpeak((v) => {
@@ -93,7 +102,7 @@ export function ChatClient() {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json", ...settingsHeaders(settings) },
-          body: JSON.stringify({ message: msg, state }),
+          body: JSON.stringify({ message: msg, state, locale }),
         });
         const json = (await res.json()) as ChatResponse | ChatError;
         if (!json.ok) {
@@ -104,15 +113,15 @@ export function ChatClient() {
         setState(json.state);
         setMode(json.mode);
         setSelected(json.jev.id);
-        if (autoSpeak && speech.supported) speech.speak(json.jev.id, json.jev.text);
+        if (autoSpeak && speech.supported) speech.speak(json.jev.id, json.jev.text, getPack(locale).speechLang);
       } catch (e) {
-        setError({ ok: false, code: "internal", message: "Could not reach the server.", detail: String(e) });
+        setError({ ok: false, code: "internal", message: t.serverUnreachable, detail: String(e) });
       } finally {
         setPending(null);
         inputRef.current?.focus();
       }
     },
-    [pending, state, autoSpeak, speech, settings],
+    [pending, state, autoSpeak, speech, settings, locale, t.serverUnreachable],
   );
 
   const reset = () => {
@@ -139,20 +148,28 @@ export function ChatClient() {
       )}
       <Header
         mode={mode}
+        tagline={t.tagline}
         right={
           <div className="flex items-center gap-2 font-mono text-[11px]">
-            <Toggle on={autoSpeak} onClick={toggleAutoSpeak} label="auto-speak" disabled={!speech.supported} />
-            <Toggle on={debug} onClick={() => setDebug((v) => !v)} label="debug" />
-            <Toggle on={brainOpen} onClick={() => setBrainOpen((v) => !v)} label="brain" />
+            <button
+              onClick={toggleLocale}
+              className="px-1.5 py-0.5 rounded border border-accent/60 text-accent hover:bg-panel-2"
+              title={locale === "en" ? "切换到中文渲染" : "Switch to English rendering"}
+            >
+              {locale === "en" ? "EN" : "中文"}
+            </button>
+            <Toggle on={autoSpeak} onClick={toggleAutoSpeak} label={t.autoSpeak} disabled={!speech.supported} />
+            <Toggle on={debug} onClick={() => setDebug((v) => !v)} label={t.debug} />
+            <Toggle on={brainOpen} onClick={() => setBrainOpen((v) => !v)} label={t.brain} />
             <button
               onClick={() => setSettingsOpen(true)}
               className="px-1.5 py-0.5 rounded border border-border text-fg-dim hover:text-fg"
               title="Jev API settings"
             >
-              settings
+              {t.settings}
             </button>
-            <button onClick={reset} className="text-fg-dim hover:text-fg px-1" title="Clear conversation and memory">
-              reset
+            <button onClick={reset} className="text-fg-dim hover:text-fg px-1" title={t.resetTitle}>
+              {t.reset}
             </button>
           </div>
         }
@@ -165,9 +182,9 @@ export function ChatClient() {
             <div className="max-w-2xl mx-auto space-y-6">
               {records.length === 0 && !pending && (
                 <div className="pt-10">
-                  <div className="text-fg-muted text-sm">Talk to Jev. Every reply is compiled from Jev&apos;s decisions — not generated.</div>
+                  <div className="text-fg-muted text-sm">{t.emptyTitle}</div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {SUGGESTIONS.map((s) => (
+                    {t.suggestions.map((s) => (
                       <button
                         key={s}
                         onClick={() => send(s)}
@@ -182,7 +199,7 @@ export function ChatClient() {
 
               {records.map((r) => (
                 <div key={r.user.id} className="space-y-4 fade-up">
-                  <Message role="You" text={r.user.text} />
+                  <Message role={t.you} text={r.user.text} />
                   <div
                     className={`rounded -mx-3 px-3 py-2 cursor-pointer transition-colors ${
                       selectedRecord?.jev.id === r.jev.id ? "bg-panel" : "hover:bg-panel/60"
@@ -190,7 +207,8 @@ export function ChatClient() {
                     onClick={() => setSelected(r.jev.id)}
                   >
                     <Message
-                      role="Jev"
+                      role={t.jev}
+                      isJev
                       text={r.jev.text}
                       meta={`${r.jev.semantic.speechAct} · ${r.jev.semantic.tone} · conf ${r.jev.semantic.confidence.toFixed(2)}`}
                       action={
@@ -199,7 +217,7 @@ export function ChatClient() {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (speech.speakingId === r.jev.id) speech.stop();
-                              else speech.speak(r.jev.id, r.jev.text);
+                              else speech.speak(r.jev.id, r.jev.text, getPack(r.jev.trace.locale ?? "en").speechLang);
                             }}
                             className={`font-mono text-[11px] px-2 py-0.5 rounded border transition-colors ${
                               speech.speakingId === r.jev.id
@@ -207,7 +225,7 @@ export function ChatClient() {
                                 : "border-border text-fg-dim hover:text-fg hover:border-border-strong"
                             }`}
                           >
-                            {speech.speakingId === r.jev.id ? "■ Stop" : "🔊 Speak"}
+                            {speech.speakingId === r.jev.id ? t.stop : t.speak}
                           </button>
                         )
                       }
@@ -223,9 +241,9 @@ export function ChatClient() {
 
               {pending && (
                 <div className="space-y-4 fade-up">
-                  <Message role="You" text={pending} />
+                  <Message role={t.you} text={pending} />
                   <div className="font-mono text-xs text-fg-dim">
-                    <span className="text-fg-muted">Jev</span> <span className="blink">deciding…</span>
+                    <span className="text-fg-muted">Jev</span> <span className="blink">{t.deciding}</span>
                   </div>
                 </div>
               )}
@@ -236,12 +254,12 @@ export function ChatClient() {
                   <div className="text-fg">{error.message}</div>
                   {error.detail && <pre className="mt-2 text-[11px] text-fg-dim whitespace-pre-wrap">{error.detail}</pre>}
                   <div className="mt-2 text-[11px] text-fg-dim">
-                    No fallback model was called.
+                    {t.noFallback}
                     {error.code === "jev_missing_key" && (
                       <>
                         {" "}
                         <button onClick={() => setSettingsOpen(true)} className="text-accent hover:underline">
-                          Open settings →
+                          {t.openSettings}
                         </button>
                       </>
                     )}
@@ -271,7 +289,7 @@ export function ChatClient() {
                   }
                 }}
                 rows={1}
-                placeholder="Say something to Jev…"
+                placeholder={t.placeholder}
                 className="flex-1 resize-none bg-panel border border-border rounded px-3 py-2 text-sm text-fg placeholder:text-fg-dim focus:outline-none focus:border-accent/60"
                 autoFocus
               />
@@ -280,12 +298,12 @@ export function ChatClient() {
                 disabled={!input.trim() || !!pending}
                 className="px-3 py-2 rounded bg-fg text-bg text-sm font-medium disabled:opacity-30 hover:bg-accent transition-colors"
               >
-                Send
+                {t.send}
               </button>
             </div>
             <div className="max-w-2xl mx-auto mt-1.5 font-mono text-[10px] text-fg-dim">
-              memory: {state.turnCount} turns · topic {state.currentTopic ?? "—"} · sentiment {state.userSentiment ?? "—"}
-              {state.unresolvedQuestion ? " · awaiting reply" : ""}
+              {t.memory(state.turnCount, state.currentTopic ?? "—", state.userSentiment ?? "—")}
+              {state.unresolvedQuestion ? t.awaiting : ""}
             </div>
           </form>
         </main>
@@ -293,7 +311,7 @@ export function ChatClient() {
         {/* Jev Brain */}
         {brainOpen && (
           <aside className="w-[320px] shrink-0 border-l border-border bg-panel/40 hidden md:flex flex-col">
-            <JevBrain turn={selectedRecord?.jev ?? null} />
+            <JevBrain turn={selectedRecord?.jev ?? null} locale={locale} />
           </aside>
         )}
       </div>
@@ -301,7 +319,7 @@ export function ChatClient() {
   );
 }
 
-function Message({ role, text, meta, action }: { role: string; text: string; meta?: string; action?: React.ReactNode }) {
+function Message({ role, text, meta, action, isJev }: { role: string; text: string; meta?: string; action?: React.ReactNode; isJev?: boolean }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
@@ -311,7 +329,7 @@ function Message({ role, text, meta, action }: { role: string; text: string; met
         </div>
         {action}
       </div>
-      <div className={`text-[15px] leading-relaxed ${role === "Jev" ? "text-fg" : "text-user"}`}>{text}</div>
+      <div className={`text-[15px] leading-relaxed ${isJev ? "text-fg" : "text-user"}`}>{text}</div>
     </div>
   );
 }

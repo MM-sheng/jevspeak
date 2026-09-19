@@ -3,6 +3,8 @@ import { useState } from "react";
 import type { JevTurn } from "@/types/conversation";
 import { DistributionBars, ScoreBar } from "./Distribution";
 import { confidenceBand, describeBand } from "@/lib/language/confidence";
+import { UI } from "@/lib/i18n";
+import type { Locale } from "@/lib/language/locale";
 
 const ORDER = [
   "intent",
@@ -18,15 +20,12 @@ const ORDER = [
   "verbosity",
 ];
 
-export function JevBrain({ turn }: { turn: JevTurn | null }) {
+export function JevBrain({ turn, locale = "en" }: { turn: JevTurn | null; locale?: Locale }) {
   const [expanded, setExpanded] = useState(true);
+  const t = UI[locale];
 
   if (!turn) {
-    return (
-      <div className="p-4 text-xs text-fg-dim font-mono">
-        Send a message. Jev&apos;s decisions — with the alternatives it rejected — will appear here.
-      </div>
-    );
+    return <div className="p-4 text-xs text-fg-dim font-mono">{t.brainEmpty}</div>;
   }
 
   const { decision, semantic } = turn;
@@ -35,12 +34,12 @@ export function JevBrain({ turn }: { turn: JevTurn | null }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 h-9 border-b border-border shrink-0">
-        <span className="font-mono text-[11px] text-fg-muted uppercase tracking-wider">Jev Brain</span>
+        <span className="font-mono text-[11px] text-fg-muted uppercase tracking-wider">{t.brainTitle}</span>
         <div className="flex items-center gap-3 font-mono text-[11px] text-fg-dim">
           <span title="Inference source">{decision.model ?? decision.source}</span>
           <span>{decision.latencyMs}ms</span>
           <button onClick={() => setExpanded((e) => !e)} className="hover:text-fg">
-            {expanded ? "collapse" : "expand"}
+            {expanded ? t.collapse : t.expand}
           </button>
         </div>
       </div>
@@ -62,8 +61,8 @@ export function JevBrain({ turn }: { turn: JevTurn | null }) {
                 <div className="flex items-baseline justify-between mb-1.5">
                   <span className="font-mono text-[11px] text-fg-muted">{k}</span>
                   <span className="flex gap-2 font-mono text-[10px] text-fg-dim">
-                    {d.confidence !== undefined && <span title="Jev's calibrated confidence in this decision">conf {d.confidence.toFixed(2)}</span>}
-                    {!inIR && <span title="Not used by the compiler for this response">unused</span>}
+                    {d.confidence !== undefined && <span title="Jev's calibrated confidence in this decision">{t.conf} {d.confidence.toFixed(2)}</span>}
+                    {!inIR && <span title={t.unusedTitle}>{t.unused}</span>}
                   </span>
                 </div>
                 <DistributionBars dist={d} />

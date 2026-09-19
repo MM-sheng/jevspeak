@@ -26,9 +26,11 @@ function extract(message: string): Features {
   const text = message.toLowerCase().trim();
   const words = text.split(/[^a-z0-9']+/).filter(Boolean);
   const isQuestion =
-    text.endsWith("?") ||
-    /^(is|are|will|do|does|can|could|should|would|what|why|how|when|where|who|which)\b/.test(text);
-  const yesNo = /^(is|are|will|do|does|can|could|should|would|did|has|have|am)\b/.test(text);
+    /[?？]$/.test(text) ||
+    /^(is|are|will|do|does|can|could|should|would|what|why|how|when|where|who|which)\b/.test(text) ||
+    /(吗|呢|多少|什么|怎么|为什么|该不该|要不要|会不会|能不能)/.test(text);
+  const yesNo =
+    /^(is|are|will|do|does|can|could|should|would|did|has|have|am)\b/.test(text) || /(吗|该不该|要不要|会不会|能不能)/.test(text);
   // whole-word match so "ai" doesn't hit "failed"; a trailing "*" allows a prefix ("programm*")
   const has = (...terms: string[]) =>
     terms.some((t) => {
@@ -58,20 +60,53 @@ function base(q: ChoiceQuestion, fill = 0): Logits {
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
+/* ---------- Chinese keyword hooks (mock only; real Jev reads any language) ---------- */
+
+const ZH = {
+  greeting: /^(你好|嗨|哈喽|早上好|晚上好)/,
+  farewell: /(再见|拜拜|回头见|晚安)/,
+  thanks: /(谢谢|多谢|感谢)/,
+  request: /(建议|怎么办|该怎么|帮我|告诉我|要不要|该不该)/,
+  emotional: /(我今天|我最近|我感觉|我觉得好|我很|挂了|失败|没考好|难过|焦虑|累|烦|开心|兴奋)/,
+  opinion: /(我认为|我觉得|我相信|比.*好|比.*差)/,
+  ai: /(AI|人工智能|大模型|机器人|自动化|ai)/,
+  tech: /(程序员|编程|代码|软件|开发|电脑|科技|应用)/,
+  work: /(工作|职业|老板|面试|工资|升职|岗位)/,
+  economics: /(经济|通胀|GDP|衰退|失业)/,
+  markets: /(股票|股市|加密|比特币|投资|币)/,
+  learning: /(考试|学习|学校|大学|课|成绩|作业|挂科)/,
+  health: /(生病|睡眠|睡不着|累|头疼|头痛|医生|健康|疼|锻炼|饮食|发烧)/,
+  relationships: /(朋友|男朋友|女朋友|伴侣|老婆|老公|家人|妈|爸|分手|感情)/,
+  sad: /(难过|失败|挂了|没考好|失去|哭|低落|沮丧)/,
+  disappointed: /(失望|挂了|没考好|不够好|搞砸)/,
+  anxious: /(担心|焦虑|紧张|害怕|压力|慌)/,
+  frustrated: /(生气|烦|恼火|讨厌|气死)/,
+  tired: /(累|疲惫|精疲力尽|没精神|倦)/,
+  happy: /(开心|高兴|太好了|喜欢|棒|很好)/,
+  excited: /(兴奋|迫不及待|激动)/,
+  replace: /(取代|代替|替代|接管)/,
+  entirely: /(完全|彻底|所有|全部)/,
+  exact: /(具体|确切|准确|多少|哪一年)/,
+  pain: /(疼|痛|生病|发烧|头疼|头痛)/,
+  invest: /(投资|买|入场|抄底)/,
+};
+const zh = (re: RegExp, t: string) => re.test(t);
+
 /* ---------- per-dimension scoring ---------- */
 
 function scoreIntent(f: Features, q: ChoiceQuestion): Logits {
   const l = base(q, -1);
-  if (f.any(/^(hi|hello|hey|yo|good (morning|evening|afternoon))\b/)) l.greeting += 5;
-  if (f.any(/\b(bye|goodbye|see you|later|good night)\b/)) l.farewell += 5;
-  if (f.any(/\b(thanks|thank you|thx|cheers)\b/)) l.thanks += 5;
+  if (f.any(/^(hi|hello|hey|yo|good (morning|evening|afternoon))\b/) || zh(ZH.greeting, f.text)) l.greeting += 5;
+  if (f.any(/\b(bye|goodbye|see you|later|good night)\b/) || zh(ZH.farewell, f.text)) l.farewell += 5;
+  if (f.any(/\b(thanks|thank you|thx|cheers)\b/) || zh(ZH.thanks, f.text)) l.thanks += 5;
   if (f.isQuestion) l.question += 4;
-  if (f.any(/\b(should i|what should|any advice|any tips|how do i|help me|tell me|can you|give me|what do i do)\b/)) l.request += 4.5;
+  if (f.any(/\b(should i|what should|any advice|any tips|how do i|help me|tell me|can you|give me|what do i do)\b/) || zh(ZH.request, f.text)) l.request += 4.5;
   if (f.any(/\b(i failed|i feel|i'm (so )?(sad|tired|anxious|happy|excited|scared|worried|stressed)|i lost|i got|today i|i just)\b/))
     l.emotional_sharing += 4;
-  if (f.any(/\b(i think|i believe|in my opinion|honestly)\b/) && !f.isQuestion) l.statement += 3;
+  if (zh(ZH.emotional, f.text) && !f.isQuestion) l.emotional_sharing += 4;
+  if ((f.any(/\b(i think|i believe|in my opinion|honestly)\b/) || zh(ZH.opinion, f.text)) && !f.isQuestion) l.statement += 3;
   if (!f.isQuestion) l.statement += 1.5;
-  if (f.words.length <= 2 && !f.isQuestion && !f.any(/\b(hi|hello|hey|bye|thanks|thank)\b/)) l.other += 4;
+  if (f.words.length <= 2 && !/[\u4e00-\u9fff]/.test(f.text) && !f.isQuestion && !f.any(/\b(hi|hello|hey|bye|thanks|thank)\b/)) l.other += 4;
   return l;
 }
 
@@ -85,7 +120,15 @@ function scoreTopic(f: Features, q: ChoiceQuestion): Logits {
   if (f.has("exam*", "test*", "study*", "learn*", "class*", "school*", "university*", "course*", "grade*", "homework*")) l.learning += 4;
   if (f.has("sick*", "sleep*", "tired*", "headache*", "ache*", "doctor*", "health", "pain*", "hurt*", "fever*", "exercise*", "diet*")) l.health += 4;
   if (f.has("friend*", "girlfriend", "boyfriend", "partner*", "wife", "husband", "family*", "mom", "dad", "breakup*", "relationship*")) l.relationships += 4;
-  if (f.any(/\b(i|me|my|myself)\b/)) l.personal += 1.5;
+  if (f.any(/\b(i|me|my|myself)\b/) || /我/.test(f.text)) l.personal += 1.5;
+  if (zh(ZH.ai, f.text)) l.ai += 4;
+  if (zh(ZH.tech, f.text)) l.technology += 3;
+  if (zh(ZH.work, f.text)) l.work += 3.5;
+  if (zh(ZH.economics, f.text)) l.economics += 4;
+  if (zh(ZH.markets, f.text)) l.markets += 4;
+  if (zh(ZH.learning, f.text)) l.learning += 4;
+  if (zh(ZH.health, f.text)) l.health += 4;
+  if (zh(ZH.relationships, f.text)) l.relationships += 4;
   l.other += 0.5;
   return l;
 }
@@ -101,12 +144,19 @@ function scoreEmotion(f: Features, q: ChoiceQuestion): Logits {
   if (f.has("happy*", "great*", "love*", "glad*", "awesome*", "amazing*", "wonder*")) l.happy += 3.5;
   if (f.has("excite*", "can't wait", "thrill*", "!!")) l.excited += 3;
   if (f.isQuestion || f.has("wonder*", "curious*", "interest*")) l.curious += 2;
+  if (zh(ZH.sad, f.text)) l.sad += 2.5;
+  if (zh(ZH.disappointed, f.text)) l.disappointed += 3;
+  if (zh(ZH.anxious, f.text)) l.anxious += 3.5;
+  if (zh(ZH.frustrated, f.text)) l.frustrated += 3.5;
+  if (zh(ZH.tired, f.text)) l.tired += 3.5;
+  if (zh(ZH.happy, f.text)) l.happy += 3.5;
+  if (zh(ZH.excited, f.text)) l.excited += 3;
   return l;
 }
 
 function scoreEmotionIntensity(f: Features): number {
   let v = 0.15;
-  if (f.has("failed*", "lost*", "hate*", "love*", "worr*", "excite*", "tired*")) v += 0.35;
+  if (f.has("failed*", "lost*", "hate*", "love*", "worr*", "excite*", "tired*") || zh(/(挂了|失败|讨厌|喜欢|担心|兴奋|累)/, f.text)) v += 0.35;
   if (f.has("so", "really", "very", "extremely", "terrible*", "awful*", "amazing*")) v += 0.2;
   if (f.text.includes("!")) v += 0.1;
   if (f.isQuestion && !f.has("i", "my")) v -= 0.1;
@@ -138,8 +188,8 @@ function scoreSpeechAct(f: Features, q: ChoiceQuestion, intent: string, emotion:
       l.disagree += 1.2;
     }
   }
-  if (topic === "health" && f.has("pain*", "sick*", "medic*", "doctor*", "pill*", "headache*", "ache*", "hurt*", "fever*")) l.warn += 4.5;
-  if (topic === "markets" && f.has("should i", "invest*", "buy")) l.warn += 5.5;
+  if (topic === "health" && (f.has("pain*", "sick*", "medic*", "doctor*", "pill*", "headache*", "ache*", "hurt*", "fever*") || zh(ZH.pain, f.text))) l.warn += 4.5;
+  if (topic === "markets" && (f.has("should i", "invest*", "buy") || zh(ZH.invest, f.text))) l.warn += 5.5;
   if (intent === "other") l.clarify += 3;
   return l;
 }
@@ -154,11 +204,11 @@ function scoreStance(f: Features, q: ChoiceQuestion, intent: string, topic: stri
     l.mixed += 1;
     l.uncertain += 1;
   }
-  if (f.has("replace*", "take over", "automat*")) {
+  if (f.has("replace*", "take over", "automat*") || zh(ZH.replace, f.text)) {
     l.mostly_yes += 2.2;
     l.mixed += 1.2;
   }
-  if (f.has("entire*", "complete*", "all", "ever")) l.mostly_no += 1.2;
+  if (f.has("entire*", "complete*", "all", "ever") || zh(ZH.entirely, f.text)) l.mostly_no += 1.2;
   if (f.has("some", "parts", "help*", "assist*", "useful", "worth", "good idea")) l.mostly_yes += 1.5;
   if (f.has("impossible*", "never", "bad idea", "waste*")) l.mostly_no += 1.5;
   if (topic === "markets") l.uncertain += 2.5;
@@ -170,24 +220,24 @@ function scoreConfidence(f: Features, intent: string, topic: string): number {
   let c = 0.7;
   if (intent === "question") {
     c = 0.62;
-    if (f.has("replace*", "will ai", "programm*")) c += 0.08;
+    if (f.has("replace*", "will ai", "programm*") || zh(ZH.replace, f.text)) c += 0.08;
     if (topic === "markets") c -= 0.25;
     if (topic === "other") c -= 0.2;
-    if (f.words.length < 3) c -= 0.2;
-    if (f.has("exact*", "precisely", "when exactly", "what year", "how many")) c -= 0.3;
+    if (f.words.length < 3 && !/[\u4e00-\u9fff]/.test(f.text)) c -= 0.2;
+    if (f.has("exact*", "precisely", "when exactly", "what year", "how many") || zh(ZH.exact, f.text)) c -= 0.3;
   }
   if (intent === "emotional_sharing") c = 0.8;
   if (intent === "greeting" || intent === "thanks" || intent === "farewell") c = 0.95;
   if (intent === "request") c = 0.68;
   if (intent === "other") c = 0.4;
-  if (topic === "health" && f.has("pain*", "sick*", "headache*", "ache*", "hurt*", "fever*")) c = 0.82;
+  if (topic === "health" && (f.has("pain*", "sick*", "headache*", "ache*", "hurt*", "fever*") || zh(ZH.pain, f.text))) c = 0.82;
   return clamp01(c);
 }
 
 function scoreClaim(f: Features, q: ChoiceQuestion, intent: string, topic: string, stance: string, emotion: string): Logits {
   const l = base(q, -3);
   l.uncertain += 0.5;
-  if (topic === "ai" || (topic === "technology" && f.has("ai", "automat*"))) {
+  if (topic === "ai" || (topic === "technology" && (f.has("ai", "automat*") || zh(ZH.ai, f.text)))) {
     l.replace_tasks += 3.5;
     l.augment_workers += 2.2;
     l.change_skill_mix += 1.8;
@@ -221,7 +271,7 @@ function scoreClaim(f: Features, q: ChoiceQuestion, intent: string, topic: strin
     l.markets_unpredictable += 4;
     l.diversify += 2.5;
   }
-  if (topic === "health" && f.has("pain*", "sick*", "doctor*", "headache*", "ache*", "hurt*", "fever*")) l.consult_doctor += 4.5;
+  if (topic === "health" && (f.has("pain*", "sick*", "doctor*", "headache*", "ache*", "hurt*", "fever*") || zh(ZH.pain, f.text))) l.consult_doctor += 4.5;
   if (intent === "statement" && f.has("i think", "i believe", "is better", "is worse")) {
     l.depends += 3.5;
     l.yes_generally += 1.5;
@@ -248,7 +298,7 @@ function scoreQualification(f: Features, q: ChoiceQuestion, topic: string, claim
   if (["start_small", "practice_more", "reflect_first", "take_break"].includes(claim)) l.depends_on_person += 3;
   if (claim === "depends") l.context_dependent += 3.5;
   if (confidence < 0.55) l.limited_knowledge += 3;
-  if (f.has("exact*", "how many", "what year")) l.limited_knowledge += 2;
+  if (f.has("exact*", "how many", "what year") || zh(ZH.exact, f.text)) l.limited_knowledge += 2;
   return l;
 }
 

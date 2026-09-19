@@ -3,41 +3,45 @@ import type { SpeechProvider } from "./provider";
 /** Browser SpeechSynthesis provider with automatic voice selection. */
 export class BrowserSpeech implements SpeechProvider {
   readonly name = "browser";
-  private voice: SpeechSynthesisVoice | null = null;
+  private voices = new Map<string, SpeechSynthesisVoice>();
 
   isSupported() {
     return typeof window !== "undefined" && "speechSynthesis" in window;
   }
 
-  private pickVoice(): SpeechSynthesisVoice | null {
-    if (this.voice) return this.voice;
+  private pickVoice(lang: string): SpeechSynthesisVoice | null {
+    const cached = this.voices.get(lang);
+    if (cached) return cached;
     const voices = window.speechSynthesis.getVoices();
     if (!voices.length) return null;
-    const lang = navigator.language || "en-US";
+    const base = lang.split("-")[0];
+    const norm = (l: string) => l.replace("_", "-").toLowerCase();
+    const quality = /Tingting|Meijia|Samantha|Daniel|Karen|Moira|Google|Natural|Premium|Enhanced|Siri/i;
     const prefer = [
-      (v: SpeechSynthesisVoice) => v.lang === lang && /Samantha|Daniel|Karen|Moira|Google|Natural|Premium|Enhanced/i.test(v.name),
-      (v: SpeechSynthesisVoice) => v.lang === lang,
-      (v: SpeechSynthesisVoice) => v.lang.startsWith("en") && /Google|Natural|Premium|Enhanced/i.test(v.name),
-      (v: SpeechSynthesisVoice) => v.lang.startsWith("en"),
+      (v: SpeechSynthesisVoice) => norm(v.lang) === lang.toLowerCase() && quality.test(v.name),
+      (v: SpeechSynthesisVoice) => norm(v.lang) === lang.toLowerCase(),
+      (v: SpeechSynthesisVoice) => norm(v.lang).startsWith(base) && quality.test(v.name),
+      (v: SpeechSynthesisVoice) => norm(v.lang).startsWith(base),
       (v: SpeechSynthesisVoice) => v.default,
     ];
     for (const p of prefer) {
       const v = voices.find(p);
       if (v) {
-        this.voice = v;
+        this.voices.set(lang, v);
         return v;
       }
     }
-    this.voice = voices[0];
-    return this.voice;
+    return voices[0];
   }
 
-  speak(text: string, opts?: { onEnd?: () => void; onError?: (e: unknown) => void }) {
+  speak(text: string, opts?: { lang?: string; onEnd?: () => void; onError?: (e: unknown) => void }) {
     if (!this.isSupported()) return;
     const synth = window.speechSynthesis;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    const v = this.pickVoice();
+    const lang = opts?.lang ?? "en";
+    u.lang = lang;
+    const v = this.pickVoice(lang);
     if (v) u.voice = v;
     u.rate = 1.0;
     u.pitch = 1.0;

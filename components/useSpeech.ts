@@ -20,10 +20,11 @@ export function useSpeech() {
     setSpeakingId(null);
   }, []);
 
-  const speak = useCallback((id: string, text: string) => {
+  const speak = useCallback((id: string, text: string, lang?: string) => {
     setError(null);
     setSpeakingId(id);
     provider.current.speak(text, {
+      lang,
       onEnd: () => setSpeakingId((cur) => (cur === id ? null : cur)),
       onError: () => {
         setError("Speech failed in this browser.");

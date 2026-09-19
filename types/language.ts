@@ -13,6 +13,8 @@ export interface CompileTrace {
   slots: string[];
   /** Warnings for unsupported / contradictory combinations the compiler repaired. */
   warnings: string[];
+  /** Which locale pack rendered the text. */
+  locale: "en" | "zh";
 }
 
 export interface CompiledResponse {

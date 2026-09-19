@@ -103,6 +103,27 @@ Which layers appear is decided by the speech act and length; the wording of
 each is drawn from small phrase banks, chosen by a seed derived from the IR.
 Templates decide wording. The IR decides meaning.
 
+## Same decisions, another language
+
+The strongest evidence that language is only a rendering layer: switch the
+locale pack and the *same* Jev decisions come out in Chinese. Nothing about
+Jev, the IR or the planner changes — only `lib/language/locales/zh.ts`.
+
+```
+IR:  { speechAct: "answer", stance: "mixed", confidence: 0.68,
+       mainClaim: "replace_tasks", qualification: "context_dependent" }
+
+en:  Yes and no. AI is going to take over some programming tasks, not the
+     whole job, though it depends on the specifics.
+
+zh:  既是也不是。AI会接手一些编程任务,但不是整个职业,不过要看具体情况。
+```
+
+A locale pack (`lib/language/locale.ts`) is phrase banks + a handful of
+surface-grammar functions (how to attach a clause, how to end a sentence, how
+to join). Adding a language is adding a pack. The UI's EN / 中文 toggle
+switches both the rendering and the TTS voice.
+
 ## Architecture
 
 ```
@@ -114,10 +135,11 @@ lib/jev                 Jev adapter
   client.ts               real API client (JEV_MODE=api) — the only file that knows the wire format
   decision.ts             raw answers → JevDecision (distributions) → SemanticResponse (IR)
 lib/language            the language engine (extractable as @jevspeak/language)
-  compiler.ts             repair IR → plan slots → realize phrases → grammar
-  confidence.ts           probability → hedge mappings
-  templates.ts            phrase banks keyed by semantic values
-  grammar.ts              capitalization, punctuation, clause joining
+  compiler.ts             repair IR → plan slots → realize phrases → grammar (locale-independent)
+  locale.ts               LocalePack interface: phrase banks + surface grammar
+  locales/en.ts, zh.ts    the English and Chinese packs
+  confidence.ts           probability → hedge bands
+  templates.ts, grammar.ts  English phrase banks and grammar helpers
   seed.ts                 deterministic variation
 lib/tts                 pluggable speech provider (browser SpeechSynthesis today)
 types/                  Semantic IR, conversation, trace types

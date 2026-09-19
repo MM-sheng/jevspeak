@@ -4,6 +4,7 @@ import { emptyState, isConversationState } from "@/lib/conversation/state";
 import { JevError, overrideFromHeaders } from "@/lib/jev";
 import type { ChatError, ChatResponse } from "@/types/conversation";
 import { clientIp, rateLimit } from "@/lib/ratelimit";
+import { isLocale } from "@/lib/language";
 
 export const runtime = "nodejs";
 
@@ -31,13 +32,13 @@ export async function POST(req: Request) {
   } catch {
     return err("bad_request", "Request body must be JSON.", 400);
   }
-  const { message, state } = (body ?? {}) as { message?: unknown; state?: unknown };
+  const { message, state, locale } = (body ?? {}) as { message?: unknown; state?: unknown; locale?: unknown };
   if (typeof message !== "string" || !message.trim()) return err("bad_request", "`message` is required.", 400);
   if (message.length > MAX_MESSAGE) return err("bad_request", `Message too long (max ${MAX_MESSAGE} chars).`, 400);
   const convo = isConversationState(state) ? state : emptyState();
 
   try {
-    const result = await runTurn(message.trim(), convo, overrideFromHeaders(req.headers));
+    const result = await runTurn(message.trim(), convo, overrideFromHeaders(req.headers), isLocale(locale) ? locale : "en");
     return NextResponse.json<ChatResponse>({ ok: true, ...result });
   } catch (e) {
     if (e instanceof JevError) {

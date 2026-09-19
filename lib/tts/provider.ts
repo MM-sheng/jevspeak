@@ -2,7 +2,7 @@
 export interface SpeechProvider {
   readonly name: string;
   isSupported(): boolean;
-  speak(text: string, opts?: { onEnd?: () => void; onError?: (e: unknown) => void }): void;
+  speak(text: string, opts?: { lang?: string; onEnd?: () => void; onError?: (e: unknown) => void }): void;
   stop(): void;
   isSpeaking(): boolean;
 }

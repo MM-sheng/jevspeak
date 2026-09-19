@@ -9,18 +9,9 @@
 import type { SemanticResponse, Claim } from "@/types/semantic";
 import type { CompiledResponse, TraceStep } from "@/types/language";
 import { hashString, pick } from "./seed";
-import {
-  ADVICE_PREFIX,
-  HEDGE_ADVERB,
-  HEDGE_PREFIX,
-  NO_WORD,
-  YES_WORD,
-  confidenceBand,
-  describeBand,
-  type ConfidenceBand,
-} from "./confidence";
-import * as T from "./templates";
-import { attachClause, capitalize, ensureTerminal, fillHedge, joinSentences, tidy } from "./grammar";
+import { confidenceBand, describeBand, type ConfidenceBand } from "./confidence";
+import type { LocalePack, Locale } from "./locale";
+import { getPack } from "./locales";
 
 export type Slot =
   | "opener"
@@ -34,6 +25,10 @@ export type Slot =
   | "decline"
   | "clarify"
   | "follow_up";
+
+export interface CompileOptions {
+  locale?: Locale;
+}
 
 export interface Plan {
   ir: SemanticResponse;
@@ -115,7 +110,8 @@ export function repairIR(input: SemanticResponse): { ir: SemanticResponse; warni
 /* 2. Plan: which semantic layers appear, in what order                  */
 /* ------------------------------------------------------------------ */
 
-export function plan(input: SemanticResponse): Plan {
+export function plan(input: SemanticResponse, pack: LocalePack = getPack("en")): Plan {
+  const T = pack.templates;
   const { ir, warnings } = repairIR(input);
   const band = confidenceBand(ir.confidence);
   const slots: Slot[] = [];
@@ -124,7 +120,7 @@ export function plan(input: SemanticResponse): Plan {
   const hasClaim = !!ir.mainClaim;
   const hasQual = !!ir.qualification;
   const hasFollow = !!ir.followUp;
-  const tonedOpener = (T.TONE_OPENER[ir.tone]?.length ?? 0) > 0 && ir.length === "medium";
+  const tonedOpener = (T.toneOpener[ir.tone]?.length ?? 0) > 0 && ir.length === "medium";
 
   switch (ir.speechAct) {
     case "greet":
@@ -137,7 +133,7 @@ export function plan(input: SemanticResponse): Plan {
       slots.push("acknowledgement");
       if (ir.length !== "minimal") {
         if (hasClaim) slots.push("claim");
-        else if (ir.responseGoal && T.GOAL_LINE[ir.responseGoal]) slots.push("goal_line");
+        else if (ir.responseGoal && T.goalLine[ir.responseGoal]) slots.push("goal_line");
       }
       if (hasFollow) slots.push("follow_up");
       break;
@@ -183,7 +179,7 @@ export function plan(input: SemanticResponse): Plan {
       if (hasQual && ir.qualification === "limited_knowledge") slots.push("qualification");
       // Jev may decline the direct question yet still hand us a claim (usually
       // advice, e.g. "seek_professional"); render it as the "but" clause.
-      if (hasClaim && ir.mainClaim !== "uncertain" && ir.length !== "minimal") slots.push("claim");
+      if (hasClaim && T.adviceClaims.has(ir.mainClaim!) && ir.length !== "minimal") slots.push("claim");
       if (hasFollow) slots.push("follow_up");
       break;
 
@@ -191,7 +187,7 @@ export function plan(input: SemanticResponse): Plan {
     default:
       slots.push("acknowledgement");
       if (hasClaim && ir.length !== "minimal") slots.push("claim");
-      if (ir.responseGoal && T.GOAL_LINE[ir.responseGoal] && ir.length === "medium" && !hasClaim) slots.push("goal_line");
+      if (ir.responseGoal && T.goalLine[ir.responseGoal] && ir.length === "medium" && !hasClaim) slots.push("goal_line");
       if (hasFollow && ir.length !== "minimal") slots.push("follow_up");
       break;
   }
@@ -203,45 +199,47 @@ export function plan(input: SemanticResponse): Plan {
 /* 3. Realize: slot → phrase                                            */
 /* ------------------------------------------------------------------ */
 
-function realizeClaim(p: Plan, seed: number, steps: TraceStep[]): string {
+function realizeClaim(p: Plan, pack: LocalePack, seed: number, steps: TraceStep[]): string {
+  const { templates: T, confidence: C, grammar: G } = pack;
   const claim = p.ir.mainClaim as Claim;
-  const template = pick(T.CLAIM[claim], seed, "claim");
+  const template = pick(T.claim[claim], seed, "claim");
   steps.push({ stage: "realize", slot: "claim", input: claim, output: template });
 
-  if (T.ADVICE_CLAIMS.has(claim)) {
-    const prefix = pick(ADVICE_PREFIX[p.band], seed, "advice_prefix");
+  if (T.adviceClaims.has(claim)) {
+    const prefix = pick(C.advice[p.band], seed, "advice_prefix");
     steps.push({ stage: "realize", slot: "advice_prefix", input: `advicePrefix(${p.ir.confidence.toFixed(2)})`, output: prefix });
-    return `${prefix} ${template}`;
+    return G.prefix(prefix, template);
   }
 
   if (p.hedgeCarried || p.band === "insufficient") {
-    const out = fillHedge(template, "");
+    const out = G.fillHedge(template, "");
     steps.push({ stage: "realize", slot: "hedge", input: "hedge already carried by short answer", output: out });
     return out;
   }
 
   // Prefer a sentence-initial frame for the "I think" band; an adverb otherwise.
   if (p.band === "i_think") {
-    const prefix = pick(HEDGE_PREFIX[p.band], seed, "hedge_prefix");
-    const out = `${prefix} ${fillHedge(template, "")}`;
+    const prefix = pick(C.prefix[p.band], seed, "hedge_prefix");
+    const out = G.prefix(prefix, G.fillHedge(template, ""));
     steps.push({ stage: "realize", slot: "hedge", input: `confidencePrefix(${p.ir.confidence.toFixed(2)})`, output: prefix });
     return out;
   }
-  const adverb = HEDGE_ADVERB[p.band];
+  const adverb = C.adverb[p.band];
   const out = template.includes("{hedge}")
-    ? fillHedge(template, adverb)
-    : `${pick(HEDGE_PREFIX[p.band], seed, "hedge_prefix")} ${template}`;
+    ? G.fillHedge(template, adverb)
+    : G.prefix(pick(C.prefix[p.band], seed, "hedge_prefix"), template);
   steps.push({ stage: "realize", slot: "hedge", input: `confidenceAdverb(${p.ir.confidence.toFixed(2)})`, output: adverb });
   return out;
 }
 
-function realizeShortAnswer(p: Plan, seed: number, steps: TraceStep[]): string {
+function realizeShortAnswer(p: Plan, pack: LocalePack, seed: number, steps: TraceStep[]): string {
+  const { templates: T, confidence: C } = pack;
   const { stance } = p.ir;
   let out: string;
-  if (stance === "mostly_yes") out = pick(YES_WORD[p.band], seed, "short_answer");
-  else if (stance === "mostly_no") out = pick(NO_WORD[p.band], seed, "short_answer");
-  else if (stance === "mixed") out = pick(T.STANCE_MIXED, seed, "short_answer");
-  else out = pick(T.STANCE_UNCERTAIN, seed, "short_answer");
+  if (stance === "mostly_yes") out = pick(C.yes[p.band], seed, "short_answer");
+  else if (stance === "mostly_no") out = pick(C.no[p.band], seed, "short_answer");
+  else if (stance === "mixed") out = pick(T.stanceMixed, seed, "short_answer");
+  else out = pick(T.stanceUncertain, seed, "short_answer");
   steps.push({
     stage: "realize",
     slot: "short_answer",
@@ -251,83 +249,85 @@ function realizeShortAnswer(p: Plan, seed: number, steps: TraceStep[]): string {
   return out;
 }
 
-function realizeAck(p: Plan, seed: number, steps: TraceStep[]): string {
+function realizeAck(p: Plan, pack: LocalePack, seed: number, steps: TraceStep[]): string {
+  const T = pack.templates;
   const e = p.ir.emotion;
   const intensity = p.ir.emotionIntensity ?? 0;
-  const bank = e ? (intensity >= 0.6 ? T.ACK_HIGH[e] : T.ACK_LOW[e]) : undefined;
+  const bank = e ? (intensity >= 0.6 ? T.ackHigh[e] : T.ackLow[e]) : undefined;
   if (bank) {
     const out = pick(bank, seed, "ack");
     steps.push({ stage: "realize", slot: "acknowledgement", input: `emotion=${e} intensity=${intensity.toFixed(2)}`, output: out });
     return out;
   }
-  const out = pick(T.ACK_NEUTRAL, seed, "ack");
+  const out = pick(T.ackNeutral, seed, "ack");
   steps.push({ stage: "realize", slot: "acknowledgement", input: "emotion=neutral", output: out });
   return out;
 }
 
-function realize(p: Plan, seed: number, steps: TraceStep[]): Fragment[] {
+function realize(p: Plan, pack: LocalePack, seed: number, steps: TraceStep[]): Fragment[] {
+  const T = pack.templates;
   const out: Fragment[] = [];
   const sentence = (text: string) => out.push({ kind: "sentence", text });
 
   for (const slot of p.slots) {
     switch (slot) {
       case "opener": {
-        const text = pick(T.TONE_OPENER[p.ir.tone] ?? [], seed, "opener");
+        const text = pick(T.toneOpener[p.ir.tone] ?? [], seed, "opener");
         steps.push({ stage: "realize", slot, input: `tone=${p.ir.tone}`, output: text });
         out.push({ kind: "opener", text });
         break;
       }
       case "greeting": {
-        const bank = T.GREETING[p.ir.intent] ?? T.ACK_NEUTRAL;
+        const bank = T.greeting[p.ir.intent] ?? T.ackNeutral;
         const text = pick(bank, seed, "greeting");
         steps.push({ stage: "realize", slot, input: `intent=${p.ir.intent}`, output: text });
         sentence(text);
         break;
       }
       case "acknowledgement":
-        sentence(realizeAck(p, seed, steps));
+        sentence(realizeAck(p, pack, seed, steps));
         break;
       case "goal_line": {
-        const text = pick(T.GOAL_LINE[p.ir.responseGoal!]!, seed, "goal");
+        const text = pick(T.goalLine[p.ir.responseGoal!]!, seed, "goal");
         steps.push({ stage: "realize", slot, input: `goal=${p.ir.responseGoal}`, output: text });
         sentence(text);
         break;
       }
       case "short_answer":
-        sentence(realizeShortAnswer(p, seed, steps));
+        sentence(realizeShortAnswer(p, pack, seed, steps));
         break;
       case "stance_line": {
-        const bank = p.ir.speechAct === "warn" ? T.WARN : p.ir.speechAct === "disagree" ? T.DISAGREE : T.AGREE;
+        const bank = p.ir.speechAct === "warn" ? T.warn : p.ir.speechAct === "disagree" ? T.disagree : T.agree;
         const text = pick(bank, seed, "stance_line");
         steps.push({ stage: "realize", slot, input: `speechAct=${p.ir.speechAct}`, output: text });
         sentence(text);
         break;
       }
       case "claim":
-        sentence(realizeClaim(p, seed, steps));
+        sentence(realizeClaim(p, pack, seed, steps));
         break;
       case "qualification": {
-        const q = T.QUALIFICATION[p.ir.qualification as keyof typeof T.QUALIFICATION];
+        const q = T.qualification[p.ir.qualification as keyof typeof T.qualification];
         const clause = pick(q.clause, seed, "qualification");
         steps.push({ stage: "realize", slot, input: `qualification=${p.ir.qualification}`, output: `${q.connector} ${clause}` });
         out.push({ kind: "qualification", connector: q.connector, clause });
         break;
       }
       case "decline": {
-        const bank = p.ir.intent === "request" ? T.DECLINE_REQUEST : T.DECLINE;
+        const bank = p.ir.intent === "request" ? T.declineRequest : T.decline;
         const text = pick(bank, seed, "decline");
         steps.push({ stage: "realize", slot, input: `confidence=${p.ir.confidence.toFixed(2)} < 0.50`, output: text });
         sentence(text);
         break;
       }
       case "clarify": {
-        const text = pick(T.CLARIFY, seed, "clarify");
+        const text = pick(T.clarify, seed, "clarify");
         steps.push({ stage: "realize", slot, input: "speechAct=clarify", output: text });
         sentence(text);
         break;
       }
       case "follow_up": {
-        const bank = T.FOLLOW_UP[p.ir.followUp as keyof typeof T.FOLLOW_UP];
+        const bank = T.followUp[p.ir.followUp as keyof typeof T.followUp];
         const text = pick(bank, seed, "follow_up");
         steps.push({ stage: "realize", slot, input: `followUp=${p.ir.followUp}`, output: text });
         sentence(text);
@@ -342,7 +342,8 @@ function realize(p: Plan, seed: number, steps: TraceStep[]): Fragment[] {
 /* 4. Grammar: assemble sentences                                        */
 /* ------------------------------------------------------------------ */
 
-function assemble(fragments: Fragment[], steps: TraceStep[]): string {
+function assemble(fragments: Fragment[], pack: LocalePack, steps: TraceStep[]): string {
+  const G = pack.grammar;
   const sentences: string[] = [];
   let pendingOpener: string | null = null;
 
@@ -354,17 +355,16 @@ function assemble(fragments: Fragment[], steps: TraceStep[]): string {
     if (f.kind === "qualification") {
       const prev = sentences.pop();
       if (prev) {
-        const merged = attachClause(prev, f.clause, f.connector);
+        const merged = G.attachClause(prev, f.clause, f.connector);
         steps.push({ stage: "grammar", slot: "attach_qualification", input: `${prev} + (${f.connector}) ${f.clause}`, output: merged });
         sentences.push(merged);
       } else {
-        sentences.push(capitalize(f.clause));
+        sentences.push(f.clause);
       }
       continue;
     }
     if (pendingOpener) {
-      const lowered = /^I(\s|')/.test(f.text) ? f.text : f.text.charAt(0).toLowerCase() + f.text.slice(1);
-      const merged = `${pendingOpener} ${lowered}`;
+      const merged = G.attachOpener(pendingOpener, f.text);
       steps.push({ stage: "grammar", slot: "attach_opener", input: `${pendingOpener} + ${f.text}`, output: merged });
       sentences.push(merged);
       pendingOpener = null;
@@ -372,22 +372,25 @@ function assemble(fragments: Fragment[], steps: TraceStep[]): string {
     }
     sentences.push(f.text);
   }
-  if (pendingOpener) sentences.push(pendingOpener.replace(/[,:]$/, ""));
+  if (pendingOpener) sentences.push(pendingOpener.replace(/[,:,]$/, ""));
 
-  const punctuated = sentences.map((s) => (s.trim().endsWith("?") ? s : ensureTerminal(s)));
-  const text = joinSentences(punctuated);
+  const punctuated = sentences.map((s) => (G.isQuestion(s) ? s : G.ensureTerminal(s)));
+  const text = G.join(punctuated);
   steps.push({ stage: "grammar", slot: "join", input: `${punctuated.length} sentence(s)`, output: text });
-  return tidy(text);
+  return text;
 }
 
 /* ------------------------------------------------------------------ */
 /* Public API                                                            */
 /* ------------------------------------------------------------------ */
 
-export function compileResponse(input: SemanticResponse): CompiledResponse {
-  const p = plan(input);
+export function compileResponse(input: SemanticResponse, opts: CompileOptions = {}): CompiledResponse {
+  const pack = getPack(opts.locale);
+  const p = plan(input, pack);
   const seed = hashString(JSON.stringify(p.ir));
   const steps: TraceStep[] = [];
+
+  steps.push({ stage: "plan", slot: "locale", input: pack.locale, output: `templates=${pack.locale} speech=${pack.speechLang}` });
 
   steps.push({
     stage: "plan",
@@ -402,11 +405,11 @@ export function compileResponse(input: SemanticResponse): CompiledResponse {
     output: p.slots.join(" + "),
   });
 
-  const fragments = realize(p, seed, steps);
-  const text = assemble(fragments, steps);
+  const fragments = realize(p, pack, seed, steps);
+  const text = assemble(fragments, pack, steps);
 
   return {
     text: text || "…",
-    trace: { seed, steps, slots: p.slots, warnings: p.warnings },
+    trace: { seed, steps, slots: p.slots, warnings: p.warnings, locale: pack.locale },
   };
 }
