@@ -20,21 +20,21 @@ describe("zh locale", () => {
   it("renders the same IR in Chinese", () => {
     const { text, trace } = compileResponse(base, { locale: "zh" });
     expect(trace.locale).toBe("zh");
-    expect(text).toMatch(/^(大概率是|多半是)。AI/);
+    expect(text).toMatch(/^(大概率是|多半是|很大可能是)。AI/);
     expect(text).toMatch(/,不过/);
     wellFormedZh(text);
   });
 
   it("maps confidence bands to Chinese hedges", () => {
-    expect(compileResponse({ ...base, confidence: 0.54 }, { locale: "zh" }).text).toMatch(/^(也许吧|有可能)。/);
-    expect(compileResponse({ ...base, confidence: 0.71 }, { locale: "zh" }).text).toMatch(/^(我觉得是|我倾向于是)。/);
-    expect(compileResponse({ ...base, confidence: 0.95 }, { locale: "zh" }).text).toMatch(/^(很可能是|基本可以说是)。/);
-    expect(compileResponse({ ...base, confidence: 0.41 }, { locale: "zh" }).text).toMatch(/把握|依据/);
+    expect(compileResponse({ ...base, confidence: 0.54 }, { locale: "zh" }).text).toMatch(/^(也许吧|有可能|说不定是)。/);
+    expect(compileResponse({ ...base, confidence: 0.71 }, { locale: "zh" }).text).toMatch(/^(我觉得是|我倾向于是|应该是)。/);
+    expect(compileResponse({ ...base, confidence: 0.95 }, { locale: "zh" }).text).toMatch(/^(很可能是|基本可以说是|几乎可以确定是)。/);
+    expect(compileResponse({ ...base, confidence: 0.41 }, { locale: "zh" }).text).toMatch(/把握|依据|在猜/);
   });
 
   it("negation", () => {
     expect(compileResponse({ ...base, stance: "mostly_no", confidence: 0.86, mainClaim: undefined, qualification: undefined }, { locale: "zh" }).text)
-      .toMatch(/^(大概率不会|多半不会)。$/);
+      .toMatch(/^(大概率不会|多半不会|很大可能不会)。$/);
   });
 
   it("uses an inline adverb hedge for claims without a short answer", () => {

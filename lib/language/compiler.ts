@@ -6,7 +6,7 @@
  * No generative model is involved. Same IR in → same text out. Every step is
  * recorded in a trace so the UI can prove where each word came from.
  */
-import type { SemanticResponse, Claim } from "@/types/semantic";
+import { DEPENDS_CLAIMS, GENERIC_CLAIMS, PLAIN_CLAIMS, SCOPE_CLAIMS, type SemanticResponse, type Claim } from "@/types/semantic";
 import type { CompiledResponse, TraceStep } from "@/types/language";
 import { hashString, pick } from "./seed";
 import { confidenceBand, describeBand, type ConfidenceBand } from "./confidence";
@@ -50,6 +50,7 @@ type Fragment =
 /* ------------------------------------------------------------------ */
 
 const NEGATIVE = new Set(["sad", "disappointed", "anxious", "frustrated", "tired"]);
+const POSITIVE = new Set(["happy", "excited"]);
 
 export function repairIR(input: SemanticResponse): { ir: SemanticResponse; warnings: string[] } {
   const warnings: string[] = [];
@@ -98,6 +99,29 @@ export function repairIR(input: SemanticResponse): { ir: SemanticResponse; warni
     warnings.push("clarify without follow-up → ask_clarify");
   }
 
+  // A context caveat after a claim that already says "it depends" is noise.
+  if (ir.mainClaim && DEPENDS_CLAIMS.has(ir.mainClaim) && (ir.qualification === "context_dependent" || ir.qualification === "depends_on_person")) {
+    warnings.push(`qualification ${ir.qualification} redundant after claim ${ir.mainClaim} → dropped`);
+    delete ir.qualification;
+  }
+
+  // "Yes." + "the answer is yes." says nothing twice.
+  if (ir.speechAct === "answer" && ir.mainClaim && GENERIC_CLAIMS.has(ir.mainClaim) && ir.stance && ir.stance !== "uncertain") {
+    warnings.push(`claim ${ir.mainClaim} only restates the short answer → dropped`);
+    delete ir.mainClaim;
+  }
+
+  // Good news is not something to recover from.
+  if (ir.emotion && POSITIVE.has(ir.emotion) && (ir.responseGoal === "encourage" || ir.responseGoal === "reassure")) {
+    warnings.push(`goal ${ir.responseGoal} with positive emotion ${ir.emotion} → connect`);
+    ir.responseGoal = "connect";
+  }
+
+  if (ir.speechAct === "ask_follow_up" && !ir.followUp) {
+    ir.followUp = "invite_more";
+    warnings.push("ask_follow_up without follow-up → invite_more");
+  }
+
   if (ir.speechAct === "greet" && !["greeting", "farewell", "thanks"].includes(ir.intent)) {
     warnings.push(`greet with intent ${ir.intent} → acknowledge`);
     ir.speechAct = "acknowledge";
@@ -139,12 +163,25 @@ export function plan(input: SemanticResponse, pack: LocalePack = getPack("en")):
       break;
 
     case "answer":
+      if (hasClaim && SCOPE_CLAIMS.has(ir.mainClaim!)) {
+        // "What's the capital of X?" → no yes/no; say plainly what this model can't do.
+        slots.push("claim");
+        hedgeCarried = true;
+        if (hasFollow && ir.length !== "minimal" && ir.followUp !== "offer_more") slots.push("follow_up");
+        break;
+      }
       if (tonedOpener) slots.push("opener");
       slots.push("short_answer");
       hedgeCarried = true;
       if (hasClaim && ir.length !== "minimal") slots.push("claim");
       if (hasQual && ir.length !== "minimal") slots.push("qualification");
       if (hasFollow && ir.length === "medium") slots.push("follow_up");
+      break;
+
+    case "ask_follow_up":
+      if (ir.emotion && ir.emotion !== "curious") slots.push("acknowledgement");
+      if (hasClaim && ir.length !== "minimal") slots.push("claim");
+      slots.push("follow_up");
       break;
 
     case "advise":
@@ -175,6 +212,12 @@ export function plan(input: SemanticResponse, pack: LocalePack = getPack("en")):
       break;
 
     case "decline":
+      if (hasClaim && SCOPE_CLAIMS.has(ir.mainClaim!)) {
+        slots.push("claim");
+        hedgeCarried = true;
+        if (hasFollow) slots.push("follow_up");
+        break;
+      }
       slots.push("decline");
       if (hasQual && ir.qualification === "limited_knowledge") slots.push("qualification");
       // Jev may decline the direct question yet still hand us a claim (usually
@@ -211,9 +254,18 @@ function realizeClaim(p: Plan, pack: LocalePack, seed: number, steps: TraceStep[
     return G.prefix(prefix, template);
   }
 
-  if (p.hedgeCarried || p.band === "insufficient") {
+  if (p.hedgeCarried || p.band === "insufficient" || PLAIN_CLAIMS.has(claim)) {
     const out = G.fillHedge(template, "");
-    steps.push({ stage: "realize", slot: "hedge", input: "hedge already carried by short answer", output: out });
+    steps.push({ stage: "realize", slot: "hedge", input: PLAIN_CLAIMS.has(claim) ? "plain claim → no hedge" : "hedge already carried by short answer", output: out });
+    return out;
+  }
+
+  // Outside a yes/no judgment, a very confident claim reads best stated plainly:
+  // "nerves are normal", not "nerves almost certainly are normal".
+  const isJudgmentAct = ["answer", "agree", "disagree", "warn"].includes(p.ir.speechAct);
+  if (!isJudgmentAct && (p.band === "very_likely" || p.band === "highly_confident")) {
+    const out = G.fillHedge(template, "");
+    steps.push({ stage: "realize", slot: "hedge", input: `confidence ${p.ir.confidence.toFixed(2)} in a ${p.ir.speechAct} → stated plainly`, output: out });
     return out;
   }
 

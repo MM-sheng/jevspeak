@@ -75,7 +75,7 @@ describe("confidence wording", () => {
       followUp: "ask_what_happened",
     });
     expect(text).toMatch(/probably/);
-    expect(text).toMatch(/What happened\?|tell me what happened\?$/);
+    expect(text).toMatch(/(happened|led up to it)\?$/);
     wellFormed(text);
   });
 });
@@ -195,5 +195,87 @@ describe("decline with a claim", () => {
     expect(text).toMatch(/professional|qualified/);
     expect(text).toMatch(/\?$/);
     wellFormed(text);
+  });
+});
+
+describe("vocabulary expansion (from real Jev output)", () => {
+  const q = (over: Partial<SemanticResponse>): SemanticResponse => ({ ...base, ...over });
+
+  it("scope claims answer plainly with no yes/no", () => {
+    const { text } = compileResponse(q({ stance: "uncertain", mainClaim: "out_of_scope_factual", qualification: undefined, followUp: "ask_which_aspect", length: "medium" }));
+    expect(text).not.toMatch(/^(Hard to say|I can't tell)/);
+    expect(text).toMatch(/fact|judgment|decision model/);
+    wellFormed(text);
+  });
+  it("no_self_experience renders without a hedge", () => {
+    const { text } = compileResponse(q({ stance: "mostly_no", mainClaim: "no_self_experience", confidence: 0.99, qualification: undefined }));
+    expect(text).not.toMatch(/almost certainly|probably/i);
+    wellFormed(text);
+  });
+  it("drops a generic yes/no claim after a short answer", () => {
+    const { text, trace } = compileResponse(q({ stance: "mostly_no", confidence: 0.93, mainClaim: "no_generally", qualification: "depends_on_person" }));
+    expect(text).not.toMatch(/doesn't hold|the answer is no/);
+    expect(trace.warnings.join()).toContain("restates");
+    wellFormed(text);
+  });
+  it("drops a context qualification after a depends-type claim", () => {
+    const { text } = compileResponse(q({ stance: "mixed", mainClaim: "depends_on_goals", qualification: "context_dependent" }));
+    expect(text).not.toMatch(/though/);
+    expect(text).toMatch(/optimizing|want|trying to get/);
+    wellFormed(text);
+  });
+  it("good news does not get 'this is recoverable'", () => {
+    const { text, trace } = compileResponse({
+      intent: "emotional_sharing", topic: "work", speechAct: "encourage", tone: "warm", length: "medium",
+      confidence: 0.9, emotion: "excited", emotionIntensity: 0.9, responseGoal: "encourage", followUp: "ask_how_feel",
+    });
+    expect(text).not.toMatch(/recoverable|come back from this/);
+    expect(trace.warnings.join()).toContain("positive");
+    wellFormed(text);
+  });
+  it("celebrate claim renders in an encourage act", () => {
+    const { text } = compileResponse({
+      intent: "emotional_sharing", topic: "work", speechAct: "encourage", tone: "warm", length: "short",
+      confidence: 0.9, emotion: "excited", emotionIntensity: 0.9, mainClaim: "celebrate",
+    });
+    expect(text).toMatch(/celebrat|enjoy/);
+    wellFormed(text);
+  });
+  it("ask_follow_up defaults to inviting more", () => {
+    const { text } = compileResponse(q({ speechAct: "ask_follow_up", stance: undefined, mainClaim: undefined, qualification: undefined }));
+    expect(text).toMatch(/Go on|Tell me more|Keep going/);
+  });
+  it("every new advice claim renders with an advice prefix in both locales", () => {
+    for (const c of ["prepare_evidence", "ask_directly", "narrow_down", "wait_before_acting", "find_underlying_issue", "try_something_new", "keep_connection"] as const) {
+      const en = compileResponse(q({ speechAct: "advise", mainClaim: c, stance: undefined, qualification: undefined, confidence: 0.8 })).text;
+      expect(en).toMatch(/^(I'd suggest you|It would probably help to)/);
+      wellFormed(en);
+      const zh = compileResponse(q({ speechAct: "advise", mainClaim: c, stance: undefined, qualification: undefined, confidence: 0.8 }), { locale: "zh" }).text;
+      expect(zh).toMatch(/^(我建议你|比较有帮助的是|我会建议)/);
+    }
+  });
+});
+
+describe("hedge placement", () => {
+  it("plain claims never get a confidence prefix", () => {
+    const { text } = compileResponse({
+      intent: "emotional_sharing", topic: "work", speechAct: "encourage", tone: "warm", length: "short",
+      confidence: 0.99, emotion: "excited", emotionIntensity: 0.9, mainClaim: "celebrate",
+    });
+    expect(text).not.toMatch(/confident that|certainly/);
+    wellFormed(text);
+  });
+  it("very confident reassurance is stated plainly, not 'almost certainly'", () => {
+    const { text } = compileResponse({
+      intent: "emotional_sharing", topic: "work", speechAct: "empathize", tone: "warm", length: "short",
+      confidence: 0.98, emotion: "anxious", emotionIntensity: 0.5, mainClaim: "nerves_are_normal",
+    });
+    expect(text).not.toMatch(/almost certainly|very likely/);
+    expect(text).toMatch(/nerv/i);
+    wellFormed(text);
+  });
+  it("but a yes/no judgment keeps its hedge", () => {
+    const { text } = compileResponse({ ...base, confidence: 0.95 });
+    expect(text).toMatch(/^(Very likely|Almost certainly)\./);
   });
 });

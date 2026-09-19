@@ -226,10 +226,16 @@ degrades gracefully to an acknowledgement or a clarifying question — never to 
 generated sentence.
 
 A real limitation worth stating plainly: Jev can only select from the finite
-claim vocabulary in `types/semantic.ts`. It cannot recall a specific fact it
-has no claim for, so *"What's the GDP of Peru in 2019?"* yields a low-confidence
-decline rather than a number. Extending the product means extending the claim
+claim vocabulary in `types/semantic.ts` (about 40 claims today). It cannot
+recall a fact it has no claim for, so *"What's the capital of Australia?"*
+gets an honest *"I can't look up or recall facts — I only make judgments"*
+rather than a guess. Extending the product means extending the claim
 vocabulary and its templates — not adding a generator.
+
+The vocabulary was grown empirically: run a batch of varied messages through
+the real Jev, look where it was forced into `depends` / `uncertain`, and add
+the claims it was reaching for. When those claims were added, Jev selected
+them with 78–100% probability on the same messages.
 
 ## License
 

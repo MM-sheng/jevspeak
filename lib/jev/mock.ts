@@ -101,7 +101,7 @@ function scoreIntent(f: Features, q: ChoiceQuestion): Logits {
   if (f.any(/\b(thanks|thank you|thx|cheers)\b/) || zh(ZH.thanks, f.text)) l.thanks += 5;
   if (f.isQuestion) l.question += 4;
   if (f.any(/\b(should i|what should|any advice|any tips|how do i|help me|tell me|can you|give me|what do i do)\b/) || zh(ZH.request, f.text)) l.request += 4.5;
-  if (f.any(/\b(i failed|i feel|i'm (so )?(sad|tired|anxious|happy|excited|scared|worried|stressed)|i lost|i got|today i|i just)\b/))
+  if (f.any(/\b(i failed|i feel|i'm (so )?(sad|tired|anxious|happy|excited|scared|worried|stressed|bored|nervous)|i lost|i got|today i|i just|i finally|i can't (sleep|decide))\b/))
     l.emotional_sharing += 4;
   if (zh(ZH.emotional, f.text) && !f.isQuestion) l.emotional_sharing += 4;
   if ((f.any(/\b(i think|i believe|in my opinion|honestly)\b/) || zh(ZH.opinion, f.text)) && !f.isQuestion) l.statement += 3;
@@ -142,7 +142,7 @@ function scoreEmotion(f: Features, q: ChoiceQuestion): Logits {
   if (f.has("angry*", "annoy*", "frustrat*", "hate*", "ugh", "stupid")) l.frustrated += 3.5;
   if (f.has("tired*", "exhaust*", "burnt out", "burned out", "burnout", "drained*")) l.tired += 3.5;
   if (f.has("happy*", "great*", "love*", "glad*", "awesome*", "amazing*", "wonder*")) l.happy += 3.5;
-  if (f.has("excite*", "can't wait", "thrill*", "!!")) l.excited += 3;
+  if (f.has("excite*", "can't wait", "thrill*", "!!") || f.any(/\b(got the job|i passed|i won|finished my|accepted)\b|拿到|通过了|赢了|完成了/)) l.excited += 3.5;
   if (f.isQuestion || f.has("wonder*", "curious*", "interest*")) l.curious += 2;
   if (zh(ZH.sad, f.text)) l.sad += 2.5;
   if (zh(ZH.disappointed, f.text)) l.disappointed += 3;
@@ -282,6 +282,34 @@ function scoreClaim(f: Features, q: ChoiceQuestion, intent: string, topic: strin
     if (stance === "mixed") l.depends += 3;
     if (stance === "uncertain") l.uncertain += 2.5;
   }
+  // comparative / opinion questions
+  if (intent === "question" && f.any(/\b(better than|vs\.?|or|worth)\b|比.*好|值得/)) {
+    l.tradeoffs += 3.5;
+    l.depends_on_goals += 3;
+    if (f.has("worth*") || /值得/.test(f.text)) l.worth_it_if_used += 3.5;
+  }
+  if (f.any(/\b(too late|too old)\b|太晚|来不及|年纪/)) l.never_too_late += 4.5;
+  if (f.any(/\b(bad for|healthy|unhealthy)\b|有害|健康吗/)) l.moderation_fine += 4;
+  if (f.any(/\b(completely|entirely|take over)\b|完全|彻底/) && intent === "question") l.partial_shift += 3;
+  if (f.any(/\b(nervous|presentation|interview tomorrow)\b|紧张|演讲/)) l.nerves_are_normal += 4;
+  // good news
+  if (intent === "emotional_sharing" && ["happy", "excited"].includes(emotion)) {
+    l.celebrate += 4.5;
+    l.earned_it += 3;
+  }
+  // more advice
+  if (f.any(/\b(raise|promotion|negotiate)\b|加薪|谈判/)) l.prepare_evidence += 4;
+  if (f.any(/\b(bug|debug|crash|error)\b|bug|报错|崩/)) l.narrow_down += 4.5;
+  if (f.any(/\b(text my ex|call my ex|message (him|her|them))\b|前任|前男友|前女友/)) l.wait_before_acting += 4.5;
+  if (f.any(/\b(argu|fight|fighting)\w*\b|吵架|争吵/) && topic === "relationships") l.find_underlying_issue += 4;
+  if (f.any(/\bbored\b|无聊/)) l.try_something_new += 4.5;
+  if (f.any(/\b(moved away|lonely|miss (him|her|them))\b|搬走|孤独|想念/)) l.keep_connection += 4;
+  // scope
+  if (f.any(/^(what|who|where|when|how many|how much|explain|define|describe)\b|是什么|多少|解释|首都|人口/) && !f.has("should*", "think*", "better*") && !/该|觉得|应该/.test(f.text)) {
+    l.out_of_scope_factual += 5;
+  }
+  if (f.any(/\b(joke|story|poem|song|write me|compose)\b|笑话|故事|诗|写一/)) l.out_of_scope_creative += 6;
+  if (f.any(/\b(are you|do you (like|love|feel|have)|what do you think about me|conscious|alive)\b|你有.*吗|你喜欢|你是不是|你有意识/)) l.no_self_experience += 6;
   return l;
 }
 

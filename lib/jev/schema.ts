@@ -148,6 +148,25 @@ const MAIN_CLAIM = choice<Claim>("main_claim", "Which single proposition best ca
   markets_unpredictable: "Short-term market moves cannot be predicted reliably",
   diversify: "Advice: spread risk rather than concentrate it",
   consult_doctor: "Advice: get this checked by a doctor",
+  tradeoffs: "Comparing two options: each has real advantages; it's a trade-off, not a clear winner",
+  depends_on_goals: "The right choice depends on what they are optimizing for",
+  moderation_fine: "In moderation it is fine for most people",
+  worth_it_if_used: "It's worth it only if they will actually use it",
+  never_too_late: "It is not too late; what matters is whether they will stick with it",
+  partial_shift: "The change will be partial and gradual, not a total takeover",
+  nerves_are_normal: "Nerves before something important are normal and usually mean they care",
+  celebrate: "Something good happened; it deserves to be celebrated",
+  earned_it: "They earned this through their own effort",
+  prepare_evidence: "Advice: go in with concrete evidence of their impact or case",
+  ask_directly: "Advice: ask plainly and specifically for what they want",
+  narrow_down: "Advice: narrow the problem down to the smallest case that still fails",
+  wait_before_acting: "Advice: wait a day before acting on the impulse",
+  find_underlying_issue: "Advice: the conflict is about something underneath the surface topic; name that",
+  try_something_new: "Advice: try something they have never done before",
+  keep_connection: "Advice: keep reaching out; distance or silence does not end the relationship",
+  out_of_scope_factual: "They want a fact, figure, or explanation. This model makes judgments; it cannot look up or recall facts",
+  out_of_scope_creative: "They want a joke, story, or other creative text. This model chooses meaning; it does not compose text",
+  no_self_experience: "They ask about the model's feelings, preferences, or consciousness. It is a decision model with no experiences to report",
 });
 
 const QUALIFICATION = choice<Qualification>("qualification", "What caveat, if any, should accompany the response?", {
@@ -180,6 +199,7 @@ const FOLLOW_UP = choice<FollowUp>("follow_up", "What follow-up question, if any
   ask_goal: "Ask what outcome they want",
   ask_timeline: "Ask about deadlines or timing",
   offer_more: "Offer to go deeper",
+  invite_more: "Invite them to keep going / say more",
 });
 
 const TONE = choice<Tone>("tone", "What tone fits the response?", {

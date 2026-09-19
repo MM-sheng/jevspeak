@@ -36,7 +36,7 @@ describe("mock jev", () => {
     const e = toSemantic(normalizeDecision(await mockInfer({ state: state("I failed my exam today."), questions: JEV_QUESTIONS }), { source: "mock", latencyMs: 0 }));
     expect(e.intent).toBe("emotional_sharing");
     expect(e.speechAct).toBe("empathize");
-    expect(compileResponse(e).text).toMatch(/What happened\?|what happened\?$/);
+    expect(compileResponse(e).text).toMatch(/(happened|led up to it)\?$/);
   });
 });
 
@@ -76,7 +76,7 @@ describe("confidence lowering", () => {
   it("below the answerability threshold, confidence is the (low) answerability so the compiler declines", () => {
     const s = build({ answerable: 0.32, stance: { mostly_yes: 0.9 } });
     expect(s.confidence).toBe(0.32);
-    expect(compileResponse(s).text).toMatch(/not confident|solid enough/);
+    expect(compileResponse(s).text).toMatch(/not confident|solid enough|be guessing/);
   });
   it("for a judgment, confidence is the probability Jev put on the chosen stance", () => {
     const s = build({ answerable: 0.9, stance: { mostly_yes: 0.62, mixed: 0.3, mostly_no: 0.08 } });

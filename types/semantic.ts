@@ -97,6 +97,7 @@ export const FOLLOW_UPS = [
   "ask_goal",
   "ask_timeline",
   "offer_more",
+  "invite_more",
 ] as const;
 export type FollowUp = (typeof FOLLOW_UPS)[number];
 
@@ -144,7 +145,40 @@ export const CLAIMS = [
   "diversify",
   // health
   "consult_doctor",
+  // comparative / opinion judgments
+  "tradeoffs",
+  "depends_on_goals",
+  "moderation_fine",
+  "worth_it_if_used",
+  "never_too_late",
+  "partial_shift",
+  "nerves_are_normal",
+  // positive events
+  "celebrate",
+  "earned_it",
+  // more advice
+  "prepare_evidence",
+  "ask_directly",
+  "narrow_down",
+  "wait_before_acting",
+  "find_underlying_issue",
+  "try_something_new",
+  "keep_connection",
+  // scope: what a decision model cannot do
+  "out_of_scope_factual",
+  "out_of_scope_creative",
+  "no_self_experience",
 ] as const;
+
+/** Claims that state a limitation of the model itself; rendered without a yes/no short answer. */
+export const SCOPE_CLAIMS: ReadonlySet<Claim> = new Set<Claim>(["out_of_scope_factual", "out_of_scope_creative", "no_self_experience"]);
+/** Claims stated plainly, never hedged or prefixed (scope statements, congratulations). */
+export const PLAIN_CLAIMS: ReadonlySet<Claim> = new Set<Claim>([...SCOPE_CLAIMS, "celebrate", "earned_it"]);
+/** Claims whose meaning already *is* "it depends"; a context qualification after them is redundant. */
+export const DEPENDS_CLAIMS: ReadonlySet<Claim> = new Set<Claim>(["depends", "depends_on_goals", "tradeoffs"]);
+/** Claims that only restate a yes/no short answer. */
+const _GENERIC: Claim[] = ["yes_generally", "no_generally"];
+export const GENERIC_CLAIMS: ReadonlySet<Claim> = new Set<Claim>(_GENERIC);
 export type Claim = (typeof CLAIMS)[number];
 
 export interface SemanticResponse {
