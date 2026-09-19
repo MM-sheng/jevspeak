@@ -75,7 +75,7 @@ const TOPIC = choice<Topic>("topic", "What is the message mainly about?", {
   other: "Something not covered by the other topics",
 });
 
-const EMOTION = choice<Emotion>("emotion", "What emotion is the user expressing?", {
+const EMOTION = choice<Emotion>("emotion", "What emotion does the user express in LATEST_USER_MESSAGE itself? Ignore earlier turns.", {
   neutral: "No particular emotion; matter-of-fact",
   happy: "Pleased, content, glad",
   excited: "Energized, enthusiastic, eager",
@@ -90,7 +90,7 @@ const EMOTION = choice<Emotion>("emotion", "What emotion is the user expressing?
 const EMOTION_INTENSITY: ScoreQuestion = {
   id: "emotion_intensity",
   kind: "score",
-  prompt: "How intense is the emotion the user is expressing?",
+  prompt: "How intense is the emotion expressed in LATEST_USER_MESSAGE itself?",
   anchors: ["No emotion expressed", "Mild", "Moderate", "Strong", "Overwhelming"],
 };
 
@@ -171,7 +171,7 @@ const RESPONSE_GOAL = choice<ResponseGoal>("response_goal", "What should the res
   caution: "Make them aware of a risk",
 });
 
-const FOLLOW_UP = choice<FollowUp>("follow_up", "What follow-up question, if any, should end the response?", {
+const FOLLOW_UP = choice<FollowUp>("follow_up", "What follow-up question, if any, should end the response to LATEST_USER_MESSAGE?", {
   none: "No follow-up needed",
   ask_what_happened: "Ask them to tell us what happened",
   ask_clarify: "Ask what they mean",

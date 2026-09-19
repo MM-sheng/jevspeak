@@ -173,7 +173,7 @@ export const STANCE_UNCERTAIN: Bank = ["Hard to say", "I can't tell"];
 export const TONE_OPENER: Partial<Record<Tone, Bank>> = {
   casual: ["Honestly,", "So,"],
   analytical: ["On balance,", "Looking at it plainly,"],
-  cautious: ["Carefully:", "With some caution,"],
+  cautious: [],
   confident: [],
   warm: [],
   neutral: [],

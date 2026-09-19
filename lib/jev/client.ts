@@ -52,7 +52,6 @@ export function toWire(req: JevRequest, model: string) {
       LATEST_USER_MESSAGE: state.message,
       BACKGROUND: {
         topic_so_far: state.currentTopic,
-        user_mood_in_earlier_turns: state.userSentiment,
         open_question_we_asked: state.unresolvedQuestion,
         earlier_turns: state.recentMessages,
       },
