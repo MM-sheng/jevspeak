@@ -210,7 +210,7 @@ export function ChatClient() {
                       role={t.jev}
                       isJev
                       text={r.jev.text}
-                      meta={`${r.jev.semantic.speechAct} · ${r.jev.semantic.tone} · conf ${r.jev.semantic.confidence.toFixed(2)}`}
+                      meta={metaLine(r.jev.semantic, locale)}
                       action={
                         <span className="flex gap-1.5">
                         <button
@@ -338,6 +338,22 @@ export function ChatClient() {
       </div>
     </div>
   );
+}
+
+/** "conf 0.65" was being read as "65% yes". Say what the number is the probability of. */
+function metaLine(s: JevTurn["semantic"], locale: Locale): string {
+  const p = s.confidence.toFixed(2);
+  const zh = locale === "zh";
+  let conf: string;
+  if (s.stance && s.stance !== "uncertain" && ["answer", "agree", "disagree", "warn"].includes(s.speechAct)) {
+    const label = { mostly_yes: zh ? "是" : "yes", mostly_no: zh ? "否" : "no", mixed: zh ? "两可" : "mixed" }[s.stance];
+    conf = zh ? `P(${label}) = ${p}` : `P(${label}) = ${p}`;
+  } else if (s.mainClaim) {
+    conf = zh ? `P(主张) = ${p}` : `P(claim) = ${p}`;
+  } else {
+    conf = zh ? `可回答 ${p}` : `answerable ${p}`;
+  }
+  return `${s.speechAct} · ${s.tone} · ${conf}`;
 }
 
 function Message({ role, text, meta, action, isJev }: { role: string; text: string; meta?: string; action?: React.ReactNode; isJev?: boolean }) {
