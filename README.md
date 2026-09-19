@@ -1,6 +1,6 @@
 # JevSpeak
 
-**Live: [jevspeak.org](https://jevspeak.org)**
+**Live: [jevspeak.org](https://jevspeak.org)** · [Launch post on X](https://x.com/LuigiProof/status/2101310173767987561)
 
 **Jev is a decision model, not a language model.**
 
