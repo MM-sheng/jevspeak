@@ -334,7 +334,10 @@ function argmax(d: Record<string, number>): string {
 export async function mockInfer(req: JevRequest): Promise<RawJevResponse> {
   const f = extract(req.state.message);
   const rand = mulberry32(hashString(req.state.message + "|" + (req.state.currentTopic ?? "")));
-  const byId = Object.fromEntries(req.questions.map((q) => [q.id, q])) as Record<string, ChoiceQuestion>;
+  const byId = Object.fromEntries(req.questions.filter((q) => q.kind === "choice").map((q) => [q.id, q])) as Record<
+    string,
+    ChoiceQuestion
+  >;
   const answers: Record<string, RawAnswer> = {};
   const choice = (id: string, logits: Logits, temp = 1) => {
     const d = softmax(jitter(logits, rand), temp);

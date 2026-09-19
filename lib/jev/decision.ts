@@ -45,7 +45,13 @@ function normalizeChoice(q: ChoiceQuestion, raw: unknown): Distribution {
   const sum = entries.reduce((a, e) => a + e.probability, 0);
   for (const e of entries) e.probability /= sum;
   entries.sort((a, b) => b.probability - a.probability);
-  return { choice: entries[0].value, probability: entries[0].probability, options: entries };
+  const conf = (raw as { confidence?: unknown }).confidence;
+  return {
+    choice: entries[0].value,
+    probability: entries[0].probability,
+    options: entries,
+    confidence: isFiniteNum(conf) ? Math.min(1, Math.max(0, conf)) : undefined,
+  };
 }
 
 function normalizeScore(id: string, raw: unknown): number {
@@ -68,7 +74,7 @@ export function normalizeDecision(
     if (q.kind === "choice") dimensions[q.id] = normalizeChoice(q, a);
     else scores[q.id] = normalizeScore(q.id, a);
   }
-  return { dimensions, scores, source: meta.source, latencyMs: meta.latencyMs };
+  return { dimensions, scores, source: meta.source, latencyMs: meta.latencyMs, model: raw.model, usage: raw.usage };
 }
 
 /** Lower the IR into the typed SemanticResponse. */

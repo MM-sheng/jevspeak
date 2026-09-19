@@ -6,6 +6,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     mode,
-    apiConfigured: mode === "api" ? Boolean(process.env.JEV_API_URL && process.env.JEV_API_KEY) : null,
+    apiConfigured: mode === "api" ? Boolean(process.env.JEV_API_KEY) : null,
+    model: mode === "api" ? process.env.JEV_MODEL || "jev-latest" : null,
   });
 }

@@ -175,6 +175,8 @@ export interface Distribution<T extends string = string> {
   choice: T;
   probability: number;
   options: Array<{ value: T; probability: number }>;
+  /** Jev's own calibrated confidence in this decision (API mode only). */
+  confidence?: number;
 }
 
 /**
@@ -187,4 +189,7 @@ export interface JevDecision {
   /** "mock" | "api" — surfaced in the UI so nobody mistakes mock for real. */
   source: "mock" | "api";
   latencyMs: number;
+  /** Resolved model version reported by the API (e.g. "jev-1.13"). */
+  model?: string;
+  usage?: { input_tokens: number; output_tokens: number };
 }

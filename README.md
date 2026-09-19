@@ -143,13 +143,23 @@ Open http://localhost:3000. `/chat` is the app.
 - `JEV_MODE=mock` — a deterministic, feature-based scorer that answers the same
   questions with distributions. Realistic enough to develop the whole product
   against. Clearly labelled **JEV MOCK** in the UI. It is not a language model.
-- `JEV_MODE=api` — calls the real Jev API. Requires `JEV_API_URL` and
-  `JEV_API_KEY`; the app refuses to run in api mode without them and reports the
-  error rather than falling back to anything.
+- `JEV_MODE=api` — calls the real Jev API (TypeSafe System One,
+  `POST https://api.typesafe.ai/v1/systemone`, model `jev-latest`). Requires
+  `JEV_API_KEY`; the app refuses to run in api mode without it and reports the
+  error rather than falling back to anything. `JEV_API_URL` / `JEV_MODEL` are
+  optional overrides (e.g. for another provider that hosts Jev).
 
 The wire format lives entirely in `lib/jev/client.ts` (`toWire` / `fromWire`).
-It POSTs `{ state, questions }` and expects `{ answers: { [id]: { distribution } | { value } } }`.
-Adapt those two functions if Jev's endpoint differs.
+We send the structured conversation state as a JSON `state` and our 13
+questions as Jev primitives — 11 `choice` questions (each option with a
+criterion), one `score` (emotion intensity, five anchors) and one `noul`
+(whether a direct, confident response is warranted). Jev's answers come back as
+per-option probabilities plus a calibrated confidence per decision; scores are
+normalized from anchor indices to [0, 1].
+
+The criteria text in `lib/jev/schema.ts` is the closest thing this project has
+to a "prompt": it is the only prose Jev reads, and tuning it is how you tune
+Jev's decisions.
 
 ### Failure states
 

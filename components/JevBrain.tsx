@@ -37,7 +37,7 @@ export function JevBrain({ turn }: { turn: JevTurn | null }) {
       <div className="flex items-center justify-between px-4 h-9 border-b border-border shrink-0">
         <span className="font-mono text-[11px] text-fg-muted uppercase tracking-wider">Jev Brain</span>
         <div className="flex items-center gap-3 font-mono text-[11px] text-fg-dim">
-          <span title="Inference source">{decision.source}</span>
+          <span title="Inference source">{decision.model ?? decision.source}</span>
           <span>{decision.latencyMs}ms</span>
           <button onClick={() => setExpanded((e) => !e)} className="hover:text-fg">
             {expanded ? "collapse" : "expand"}
@@ -61,7 +61,10 @@ export function JevBrain({ turn }: { turn: JevTurn | null }) {
               <section key={k} className="px-4 py-3 border-b border-border">
                 <div className="flex items-baseline justify-between mb-1.5">
                   <span className="font-mono text-[11px] text-fg-muted">{k}</span>
-                  {!inIR && <span className="font-mono text-[10px] text-fg-dim" title="Not used by the compiler for this response">unused</span>}
+                  <span className="flex gap-2 font-mono text-[10px] text-fg-dim">
+                    {d.confidence !== undefined && <span title="Jev's calibrated confidence in this decision">conf {d.confidence.toFixed(2)}</span>}
+                    {!inIR && <span title="Not used by the compiler for this response">unused</span>}
+                  </span>
                 </div>
                 <DistributionBars dist={d} />
               </section>

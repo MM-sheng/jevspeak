@@ -4,7 +4,7 @@
  */
 import { JEV_QUESTIONS, type JevRequest, type JevState } from "./schema";
 import { mockInfer } from "./mock";
-import { apiInfer } from "./client";
+import { apiInfer, DEFAULT_JEV_API_URL, DEFAULT_JEV_MODEL } from "./client";
 import { normalizeDecision, toSemantic } from "./decision";
 import { JevError } from "./errors";
 import type { JevDecision, SemanticResponse } from "@/types/semantic";
@@ -28,11 +28,13 @@ export async function inferDecision(state: JevState): Promise<InferenceResult> {
 
   let raw;
   if (mode === "api") {
-    const apiUrl = process.env.JEV_API_URL;
     const apiKey = process.env.JEV_API_KEY;
     if (!apiKey) throw new JevError("missing_key", "JEV_MODE=api but JEV_API_KEY is not set.");
-    if (!apiUrl) throw new JevError("missing_key", "JEV_MODE=api but JEV_API_URL is not set.");
-    raw = await apiInfer(req, { apiUrl, apiKey });
+    raw = await apiInfer(req, {
+      apiKey,
+      apiUrl: process.env.JEV_API_URL || DEFAULT_JEV_API_URL,
+      model: process.env.JEV_MODEL || DEFAULT_JEV_MODEL,
+    });
   } else {
     raw = await mockInfer(req);
   }
