@@ -128,7 +128,12 @@ export function Landing() {
           ))}
         </section>
       </main>
-      <footer className="px-6 py-4 text-[11px] text-fg-dim font-mono border-t border-border">{c.footer}</footer>
+      <footer className="px-6 py-4 text-[11px] text-fg-dim font-mono border-t border-border flex flex-wrap gap-x-4 gap-y-1 justify-between">
+        <span>{c.footer}</span>
+        <a href="https://github.com/MM-sheng/jevspeak" className="hover:text-fg">
+          github.com/MM-sheng/jevspeak
+        </a>
+      </footer>
     </div>
   );
 }
