@@ -2,6 +2,17 @@
 
 **Live: [jevspeak.org](https://jevspeak.org)** · [Launch post on X](https://x.com/LuigiProof/status/2101310173767987561)
 
+## Try it in 30 seconds
+
+1. Open **[JevSpeak](https://jevspeak.org)** and go to the chat.
+2. Ask a judgment question, such as **“Will AI replace programmers?”**
+3. Inspect **Jev Brain** to see the decision distributions, then open **debug** to follow how they become a sentence.
+4. Switch between **EN / 中文** to see how the same decisions can be rendered in another language.
+
+Check the mode shown in the app: **JEV MOCK** uses a deterministic development scorer; real Jev API mode requires a key. The finite claim vocabulary limits what it can answer. See [Modes](#modes) and [Supported domains](#supported-domains-mvp) below.
+
+**For developers exploring decision models, inspectable conversational systems, or deterministic language generation.**
+
 **Jev is a decision model, not a language model.**
 
 JevSpeak explores whether a model that cannot generate free-form text can still
