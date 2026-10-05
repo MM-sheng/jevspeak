@@ -2,6 +2,14 @@
 
 **Live: [jevspeak.org](https://jevspeak.org)** · [Launch post on X](https://x.com/LuigiProof/status/2101310173767987561)
 
+```mermaid
+flowchart LR
+    A[Your message] --> B[Jev decisions]
+    B --> C[Structured meaning]
+    C --> D[Deterministic language compiler]
+    D --> E[English or Chinese reply]
+```
+
 ## Try it in 30 seconds
 
 1. Open **[JevSpeak](https://jevspeak.org)** and go to the chat.
